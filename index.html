@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Self Finance — Household ledger & NEPSE watch</title>
+  <meta name="description" content="Personal ledger for Nepali households: net worth, NEPSE watchlist, budgets, and cash flow.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <canvas id="finance-bg-canvas" class="finance-bg-canvas" aria-hidden="true"></canvas>
+
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-mark" aria-label="Apex Finance logo">
+  <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
+    <defs>
+      <linearGradient id="auth-logo-grad" x1="0" x2="1" y1="1" y2="0">
+        <stop offset="0" stop-color="#27d69b"/>
+        <stop offset="1" stop-color="#75f2c2"/>
+      </linearGradient>
+    </defs>
+    <path d="M8 35.5 18.6 24l6.4 6.2L40 13.5" fill="none" stroke="url(#auth-logo-grad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M32.5 13.5H40V21" fill="none" stroke="#d7fff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="8" cy="35.5" r="2.5" fill="#75f2c2"/>
+  </svg>
+</div>
+        <div>
+          <p class="auth-kicker">Self Finance</p>
+          <h1 class="auth-title" id="auth-heading">Open the demo</h1>
+        </div>
+      </div>
+      <p class="auth-lead" id="auth-lead">Demo only. This browser app has no account security. Do not enter real passwords or sensitive financial information.</p>
+
+      <button type="button" class="btn btn-primary auth-submit" id="enter-demo">Continue to demo</button>
+    </div>
+  </div>
+
+  <div class="app-layout is-locked" id="app-layout" hidden>
+    <aside class="sidebar" id="sidebar" aria-label="Primary">
+      <div class="sidebar-brand">
+        <div class="brand-mark" aria-label="Apex Finance logo">
+  <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
+    <defs>
+      <linearGradient id="sidebar-logo-grad" x1="0" x2="1" y1="1" y2="0">
+        <stop offset="0" stop-color="#27d69b"/>
+        <stop offset="1" stop-color="#75f2c2"/>
+      </linearGradient>
+    </defs>
+    <path d="M8 35.5 18.6 24l6.4 6.2L40 13.5" fill="none" stroke="url(#sidebar-logo-grad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M32.5 13.5H40V21" fill="none" stroke="#d7fff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="8" cy="35.5" r="2.5" fill="#75f2c2"/>
+  </svg>
+</div>
+        <div class="brand-info">
+          <span class="brand-name">Self Finance</span>
+          <span class="brand-badge">Ledger</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <p class="nav-section-label">Books</p>
+        <button type="button" class="nav-item active" data-view="overview">
+          <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+          <span>Overview</span>
+        </button>
+        <button type="button" class="nav-item" data-view="analytics">
+          <i data-lucide="bar-chart-3" aria-hidden="true"></i>
+          <span>Cash flow</span>
+        </button>
+        <button type="button" class="nav-item" data-view="markets">
+          <i data-lucide="candlestick-chart" aria-hidden="true"></i>
+          <span>NEPSE</span>
+          <span class="nav-pill">Live</span>
+        </button>
+        <button type="button" class="nav-item" data-view="transactions">
+          <i data-lucide="scroll-text" aria-hidden="true"></i>
+          <span>Ledger</span>
+        </button>
+        <button type="button" class="nav-item" data-view="budgets">
+          <i data-lucide="target" aria-hidden="true"></i>
+          <span>Budgets</span>
+        </button>
+
+        <p class="nav-section-label">Moves</p>
+        <button type="button" class="nav-item" data-view="transfer-modal-trigger" id="btn-quick-transfer-nav">
+          <i data-lucide="arrow-left-right" aria-hidden="true"></i>
+          <span>Transfer</span>
+        </button>
+        <button type="button" class="nav-item" data-view="reports" id="btn-export-statement-nav">
+          <i data-lucide="download" aria-hidden="true"></i>
+          <span>Export CSV</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-card">
+        <div class="health-header">
+          <div class="health-title">Health score</div>
+          <span class="health-score-badge" id="health-score-badge">94 / 100</span>
+        </div>
+        <div class="health-progress-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="94" id="health-progress-wrap">
+          <div class="health-progress-bar" id="health-progress-bar" style="width: 94%"></div>
+        </div>
+        <p class="health-desc">Savings sit above a 50% target. Housing is the tightest cap this month.</p>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-avatar" id="user-avatar" aria-hidden="true">—</div>
+        <div class="user-details">
+          <span class="user-name" id="user-name">Signed out</span>
+          <span class="user-tier" id="user-email"></span>
+        </div>
+        <button type="button" class="icon-btn-ghost" id="btn-logout" aria-label="Exit demo" title="Exit demo">
+          <i data-lucide="log-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <p class="demo-security-notice" role="note">Demo only: this app has no real sign-in or data protection. Never enter real passwords or sensitive financial information.</p>
+      <header class="topbar">
+        <div class="topbar-left">
+          <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
+            <i data-lucide="menu" aria-hidden="true"></i>
+          </button>
+          <div class="search-box">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input type="search" id="global-search" placeholder="Search NABIL, UPPER, rent, dividend…">
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="currency-dropdown-wrap">
+            <label class="sr-only" for="currency-select">Display currency</label>
+            <i data-lucide="globe" class="currency-icon" aria-hidden="true"></i>
+            <select id="currency-select" class="currency-select">
+              <option value="NPR" selected>NPR</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="JPY">JPY</option>
+              <option value="CAD">CAD</option>
+            </select>
+          </div>
+
+          <div class="date-badge">
+            <i data-lucide="calendar" aria-hidden="true"></i>
+            <span id="current-date-display">Aug 2026</span>
+          </div>
+
+          <button type="button" class="icon-btn theme-toggle-btn" id="theme-toggle" aria-label="Switch theme" title="Theme">
+            <i data-lucide="moon" id="theme-icon-moon" aria-hidden="true"></i>
+            <i data-lucide="sun" id="theme-icon-sun" class="hidden" aria-hidden="true"></i>
+          </button>
+
+          <div class="notif-wrapper">
+            <button type="button" class="icon-btn notif-btn" id="notif-btn" aria-label="Notifications" aria-expanded="false" aria-controls="notif-dropdown">
+              <i data-lucide="bell" aria-hidden="true"></i>
+              <span class="notif-dot" aria-hidden="true"></span>
+            </button>
+            <div class="notif-dropdown" id="notif-dropdown" role="region" aria-label="Notifications">
+              <div class="notif-header">
+                <h3>Desk notes</h3>
+                <span class="badge badge-sm">3</span>
+              </div>
+              <div class="notif-list">
+                <div class="notif-item unread">
+                  <div class="notif-icon-circle success"><i data-lucide="banknote" aria-hidden="true"></i></div>
+                  <div class="notif-body">
+                    <p class="notif-text"><strong>NABIL</strong> — 11.5% cash plus bonus announced.</p>
+                    <span class="notif-time">10 min</span>
+                  </div>
+                </div>
+                <div class="notif-item unread">
+                  <div class="notif-icon-circle info"><i data-lucide="activity" aria-hidden="true"></i></div>
+                  <div class="notif-body">
+                    <p class="notif-text"><strong>NEPSE</strong> cleared 2,840 with Rs 7.42B turnover.</p>
+                    <span class="notif-time">45 min</span>
+                  </div>
+                </div>
+                <div class="notif-item">
+                  <div class="notif-icon-circle warning"><i data-lucide="alert-triangle" aria-hidden="true"></i></div>
+                  <div class="notif-body">
+                    <p class="notif-text"><strong>UPPER</strong> printed +6.2% before noon.</p>
+                    <span class="notif-time">2 hr</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-primary" id="btn-open-add-modal">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            <span>Add entry</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="content-container" id="main-content">
+        <section class="view-panel active" id="view-overview">
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">Household books</h1>
+              <p class="page-subtitle" id="overview-greeting">Demo preview — no account is used.</p>
+            </div>
+            <div class="action-btn-group">
+              <button type="button" class="btn btn-outline" id="btn-quick-transfer">
+                <i data-lucide="send" aria-hidden="true"></i>
+                <span>Transfer</span>
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-export-csv">
+                <i data-lucide="file-spreadsheet" aria-hidden="true"></i>
+                <span>CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Net worth</span>
+                <span class="kpi-icon"><i data-lucide="wallet" aria-hidden="true"></i></span>
+              </div>
+              <div class="kpi-value" id="kpi-net-worth-val">—</div>
+              <div class="kpi-bottom">
+                <span class="trend-badge positive" id="kpi-nw-delta">+8.4% month</span>
+                <span class="kpi-comparison">all sleeves</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Monthly inflow</span>
+                <span class="kpi-icon text-emerald"><i data-lucide="arrow-down-left" aria-hidden="true"></i></span>
+              </div>
+              <div class="kpi-value" id="kpi-income-val">—</div>
+              <div class="kpi-bottom">
+                <span class="trend-badge positive">Consulting + rent</span>
+                <span class="kpi-comparison">this cycle</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Monthly outflow</span>
+                <span class="kpi-icon text-rose"><i data-lucide="arrow-up-right" aria-hidden="true"></i></span>
+              </div>
+              <div class="kpi-value" id="kpi-expense-val">—</div>
+              <div class="kpi-bottom">
+                <span class="trend-badge" id="kpi-expense-note">Includes SIP &amp; TMS buys</span>
+                <span class="kpi-comparison">living + invest</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-label">Saved / invested</span>
+                <span class="kpi-icon text-brass"><i data-lucide="piggy-bank" aria-hidden="true"></i></span>
+              </div>
+              <div class="kpi-value" id="kpi-savings-val">—</div>
+              <div class="kpi-bottom">
+                <span class="trend-badge positive">Target 50%</span>
+                <span class="kpi-comparison">after this month’s books</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-dashboard-grid">
+            <div class="card chart-card main-chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Portfolio mark</h2>
+                  <p class="card-subtitle">Net worth in the selected currency</p>
+                </div>
+                <div class="btn-group time-filters" id="timeframe-selector" role="group" aria-label="Chart range">
+                  <button type="button" class="time-btn" data-time="1W">1W</button>
+                  <button type="button" class="time-btn" data-time="1M">1M</button>
+                  <button type="button" class="time-btn" data-time="6M">6M</button>
+                  <button type="button" class="time-btn active" data-time="1Y">1Y</button>
+                  <button type="button" class="time-btn" data-time="ALL">All</button>
+                </div>
+              </div>
+              <div class="card-body chart-body">
+                <canvas id="portfolioChart" aria-label="Portfolio valuation chart"></canvas>
+              </div>
+            </div>
+
+            <div class="card chart-card donut-chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Mix</h2>
+                  <p class="card-subtitle">Where the capital sits</p>
+                </div>
+                <span class="badge badge-accent">5 sleeves</span>
+              </div>
+              <div class="card-body donut-body">
+                <div class="donut-chart-container">
+                  <canvas id="assetDonutChart" aria-label="Asset allocation"></canvas>
+                  <div class="donut-center-label">
+                    <span class="donut-center-title">Assets</span>
+                    <span class="donut-center-val" id="donut-center-total">—</span>
+                  </div>
+                </div>
+                <div class="asset-legend-grid" id="asset-legend-grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="secondary-dashboard-grid">
+            <div class="card market-card">
+              <div class="card-header">
+                <div class="flex-align-center gap-2">
+                  <h2 class="card-title">Tape</h2>
+                  <span class="live-dot" title="Simulated ticks"></span>
+                </div>
+                <button type="button" class="link-btn" id="btn-view-all-markets">Full board</button>
+              </div>
+              <div class="card-body p-0">
+                <div class="market-ticker-table-wrap">
+                  <table class="market-table">
+                    <thead>
+                      <tr>
+                        <th>Scrip</th>
+                        <th>LTP</th>
+                        <th>Change</th>
+                        <th>7D</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mini-market-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card transactions-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Latest entries</h2>
+                  <p class="card-subtitle">Debits, credits, dividends</p>
+                </div>
+                <button type="button" class="link-btn" id="btn-view-all-transactions">Open ledger</button>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Entry</th>
+                        <th>Book</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-transactions-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card full-width expense-breakdown-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Where rupees went</h2>
+                <p class="card-subtitle">Click a category to filter the ledger</p>
+              </div>
+              <div class="badge badge-accent" id="overview-outflow-badge">Outflow —</div>
+            </div>
+            <div class="card-body">
+              <div class="stacked-bar-container">
+                <div class="stacked-bar-header">
+                  <span>Share of this month</span>
+                  <span>10 books</span>
+                </div>
+                <div class="expense-bar-stacked" id="expense-stacked-bar"></div>
+              </div>
+              <div class="category-matrix-grid mt-4" id="category-matrix-grid"></div>
+            </div>
+          </div>
+
+          <div class="goals-budget-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Milestones</h2>
+                  <p class="card-subtitle">Capital still to put aside</p>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-add-goal">
+                  <i data-lucide="plus" aria-hidden="true"></i> Add
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="goals-list" id="goals-list-container"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Caps</h2>
+                  <p class="card-subtitle">Five largest books</p>
+                </div>
+                <span class="badge badge-success" id="overall-budget-status">On track</span>
+              </div>
+              <div class="card-body">
+                <div class="budget-bars-list" id="budget-bars-container"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-analytics">
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">Cash flow</h1>
+              <p class="page-subtitle">Inflow against living and investment outflows.</p>
+            </div>
+            <div class="btn-group" id="analytics-range" role="group" aria-label="Analytics range">
+              <button type="button" class="btn btn-outline active" data-range="ytd">YTD 2083</button>
+              <button type="button" class="btn btn-outline" data-range="t12">Trailing 12m</button>
+            </div>
+          </div>
+          <div class="analytics-charts-grid">
+            <div class="card full-width">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">In vs out</h2>
+                  <p class="card-subtitle">Last six Bikram months</p>
+                </div>
+              </div>
+              <div class="card-body chart-body-lg">
+                <canvas id="cashflowChart"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">By book</h2>
+                  <p class="card-subtitle">This month’s outflow mix</p>
+                </div>
+              </div>
+              <div class="card-body chart-body">
+                <canvas id="expenseCategoryChart"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Five-year sketch</h2>
+                  <p class="card-subtitle">13.5% vs 24% CAGR on today’s mark — not a forecast</p>
+                </div>
+              </div>
+              <div class="card-body chart-body">
+                <canvas id="projectionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-markets">
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">NEPSE board</h1>
+              <p class="page-subtitle">Simulated ticks for demo — not a live feed from the exchange.</p>
+            </div>
+            <div class="live-feed-badge">
+              <span class="live-pulse-dot"></span>
+              <span>Demo ticks ~1.8s</span>
+            </div>
+          </div>
+          <div class="market-hero-indices" id="market-hero-indices"></div>
+          <div class="card full-width mt-4">
+            <div class="card-header card-header-wrap">
+              <div class="table-search-bar">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <label class="sr-only" for="market-search">Search scrips</label>
+                <input type="search" id="market-search" placeholder="NABIL, UPPER, NTC…">
+              </div>
+              <div class="market-category-filters" id="market-category-filters">
+                <button type="button" class="filter-pill active" data-cat="all">All</button>
+                <button type="button" class="filter-pill" data-cat="indices">Indices</button>
+                <button type="button" class="filter-pill" data-cat="banks">Banks</button>
+                <button type="button" class="filter-pill" data-cat="hydro">Hydro</button>
+                <button type="button" class="filter-pill" data-cat="insurance">Insurance</button>
+                <button type="button" class="filter-pill" data-cat="microfinance">Microfinance</button>
+                <button type="button" class="filter-pill" data-cat="others">Others</button>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="market-table-full">
+                  <thead>
+                    <tr>
+                      <th>Scrip</th>
+                      <th>Sector</th>
+                      <th>LTP</th>
+                      <th>Pts / Rs</th>
+                      <th>%</th>
+                      <th>Day range</th>
+                      <th>Cap</th>
+                      <th>7D</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="full-market-tbody"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint hidden" id="market-empty">No scrips match that filter.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-transactions">
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">Ledger</h1>
+              <p class="page-subtitle">Every posted debit and credit.</p>
+            </div>
+            <div class="action-btn-group">
+              <button type="button" class="btn btn-outline" id="btn-export-transactions-csv">
+                <i data-lucide="download" aria-hidden="true"></i> CSV
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-add-transaction-ledger">
+                <i data-lucide="plus" aria-hidden="true"></i> Add entry
+              </button>
+            </div>
+          </div>
+
+          <div class="filter-card card">
+            <div class="filter-controls-row">
+              <div class="filter-group flex-1">
+                <label for="tx-search-input">Search</label>
+                <div class="input-with-icon">
+                  <i data-lucide="search" aria-hidden="true"></i>
+                  <input type="search" id="tx-search-input" placeholder="Merchant, note, account">
+                </div>
+              </div>
+              <div class="filter-group">
+                <label for="tx-category-filter">Book</label>
+                <select id="tx-category-filter">
+                  <option value="all">All</option>
+                  <option value="Income">Income</option>
+                  <option value="Housing & Rent">Housing &amp; Rent</option>
+                  <option value="Food & Groceries">Food &amp; Groceries</option>
+                  <option value="Education & Tuition">Education &amp; Tuition</option>
+                  <option value="Health & Medical Care">Health &amp; Medical Care</option>
+                  <option value="Utilities & Bills">Utilities &amp; Bills</option>
+                  <option value="Transport & Fuel">Transport &amp; Fuel</option>
+                  <option value="NEPSE & Investments">NEPSE &amp; Investments</option>
+                  <option value="Shopping & Lifestyle">Shopping &amp; Lifestyle</option>
+                  <option value="Entertainment & Travel">Entertainment &amp; Travel</option>
+                  <option value="Family & Festivals">Family &amp; Festivals</option>
+                  <option value="Transfer">Transfer</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="tx-type-filter">Type</label>
+                <select id="tx-type-filter">
+                  <option value="all">All</option>
+                  <option value="credit">Credit</option>
+                  <option value="debit">Debit</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="tx-status-filter">Status</label>
+                <select id="tx-status-filter">
+                  <option value="all">All</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+              <div class="filter-group align-end">
+                <button type="button" class="btn btn-secondary" id="btn-reset-filters">
+                  <i data-lucide="rotate-ccw" aria-hidden="true"></i> Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card full-width mt-4">
+            <div class="table-responsive">
+              <table class="data-table data-table-interactive">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Book</th>
+                    <th>Account</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="full-transactions-tbody"></tbody>
+              </table>
+            </div>
+            <div class="table-pagination-footer">
+              <span id="tx-count-display"></span>
+              <div class="pagination-btns" id="tx-pagination-btns"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-budgets">
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">Budgets &amp; milestones</h1>
+              <p class="page-subtitle">Monthly caps and the amounts still to fund.</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-open-create-goal">
+              <i data-lucide="plus-circle" aria-hidden="true"></i> New milestone
+            </button>
+          </div>
+          <div class="budgets-view-grid">
+            <div class="card full-width">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Monthly caps</h2>
+                  <p class="card-subtitle">Spend against the ceiling</p>
+                </div>
+                <div class="budget-summary-badge" id="budget-total-spend-badge">—</div>
+              </div>
+              <div class="card-body">
+                <div class="detailed-budget-grid" id="detailed-budget-container"></div>
+              </div>
+            </div>
+            <div class="card full-width">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Milestones</h2>
+                  <p class="card-subtitle">Multi-year pools</p>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="goals-card-grid" id="goals-card-grid"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="add-tx-modal" role="dialog" aria-modal="true" aria-labelledby="add-tx-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="flex-align-center gap-2">
+          <div class="modal-icon-badge"><i data-lucide="scroll-text" aria-hidden="true"></i></div>
+          <h3 class="modal-title" id="add-tx-title">New ledger entry</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-tx-modal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="add-tx-form" class="modal-form">
+        <p class="form-error hidden" id="tx-form-error" role="alert"></p>
+        <div class="form-grid">
+          <div class="form-group full-span">
+            <label for="tx-desc">Description</label>
+            <input type="text" id="tx-desc" required maxlength="120" placeholder="Bhatbhateni, TMS UPPER, NABIL dividend">
+          </div>
+          <div class="form-group">
+            <label for="tx-amount">Amount (NPR)</label>
+            <input type="number" step="0.01" min="0.01" id="tx-amount" required placeholder="25000">
+          </div>
+          <div class="form-group">
+            <label for="tx-type">Flow</label>
+            <select id="tx-type" required>
+              <option value="debit">Debit</option>
+              <option value="credit">Credit</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tx-category">Book</label>
+            <select id="tx-category" required>
+              <option value="Housing & Rent">Housing &amp; Rent</option>
+              <option value="Food & Groceries">Food &amp; Groceries</option>
+              <option value="Education & Tuition">Education &amp; Tuition</option>
+              <option value="Health & Medical Care">Health &amp; Medical Care</option>
+              <option value="Utilities & Bills">Utilities &amp; Bills</option>
+              <option value="Transport & Fuel">Transport &amp; Fuel</option>
+              <option value="NEPSE & Investments">NEPSE &amp; Investments</option>
+              <option value="Shopping & Lifestyle">Shopping &amp; Lifestyle</option>
+              <option value="Entertainment & Travel">Entertainment &amp; Travel</option>
+              <option value="Family & Festivals">Family &amp; Festivals</option>
+              <option value="Income">Income</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tx-account">Account</label>
+            <select id="tx-account">
+              <option value="Nabil Bank Direct (...4819)">Nabil (...4819)</option>
+              <option value="Global IME Account (...9201)">Global IME (...9201)</option>
+              <option value="NIC Asia Platinum (...1004)">NIC Asia (...1004)</option>
+              <option value="TMS Broker 58 Collateral">TMS Broker 58</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tx-date">Date</label>
+            <input type="date" id="tx-date" required>
+          </div>
+          <div class="form-group">
+            <label for="tx-status">Status</label>
+            <select id="tx-status">
+              <option value="Completed">Completed</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-tx-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Post</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="transfer-modal" role="dialog" aria-modal="true" aria-labelledby="transfer-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="flex-align-center gap-2">
+          <div class="modal-icon-badge"><i data-lucide="arrow-left-right" aria-hidden="true"></i></div>
+          <h3 class="modal-title" id="transfer-title">Internal transfer</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-transfer-modal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="transfer-form" class="modal-form">
+        <p class="form-error hidden" id="transfer-form-error" role="alert"></p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="transfer-from">From</label>
+            <select id="transfer-from">
+              <option value="Nabil Bank Direct (...4819)">Nabil — Rs 24.5L</option>
+              <option value="Global IME Account (...9201)">Global IME — Rs 18.5L</option>
+              <option value="NIC Asia Platinum (...1004)">NIC Asia — Rs 9.5L</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="transfer-to">To</label>
+            <select id="transfer-to">
+              <option value="TMS Broker 58 Trading Collateral">TMS Broker 58</option>
+              <option value="Citizen Investment Trust (CIT) Pension">CIT</option>
+              <option value="NABIL Fixed Deposit (1 Year)">NABIL FD 1Y</option>
+              <option value="ConnectIPS / NCHL Direct Wire">ConnectIPS</option>
+            </select>
+          </div>
+          <div class="form-group full-span">
+            <label for="transfer-amount">Amount (NPR)</label>
+            <div class="input-with-prefix">
+              <span class="currency-prefix">Rs</span>
+              <input type="number" step="1000" min="1000" id="transfer-amount" required placeholder="50000">
+            </div>
+          </div>
+          <div class="form-group full-span">
+            <label for="transfer-note">Memo</label>
+            <input type="text" id="transfer-note" maxlength="80" placeholder="Monthly DCA">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-transfer-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Move funds</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="goal-modal" role="dialog" aria-modal="true" aria-labelledby="goal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="flex-align-center gap-2">
+          <div class="modal-icon-badge"><i data-lucide="target" aria-hidden="true"></i></div>
+          <h3 class="modal-title" id="goal-title">New milestone</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-goal-modal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="goal-form" class="modal-form">
+        <p class="form-error hidden" id="goal-form-error" role="alert"></p>
+        <div class="form-grid">
+          <div class="form-group full-span">
+            <label for="goal-name">Title</label>
+            <input type="text" id="goal-name" required maxlength="80" placeholder="Pokhara land, hydro pool…">
+          </div>
+          <div class="form-group">
+            <label for="goal-target">Target (NPR)</label>
+            <input type="number" id="goal-target" required min="1" placeholder="5000000">
+          </div>
+          <div class="form-group">
+            <label for="goal-current">Already set aside (NPR)</label>
+            <input type="number" id="goal-current" required min="0" placeholder="1250000">
+          </div>
+          <div class="form-group full-span">
+            <label for="goal-target-date">Aim date</label>
+            <input type="date" id="goal-target-date" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-goal-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite" aria-relevant="additions"></div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
