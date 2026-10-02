@@ -12,7 +12,7 @@ FinSight is a financial command-center foundation for personal and small-busines
 ## Run locally
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 python -m uvicorn backend.main:app --reload
 ```
 
@@ -25,7 +25,12 @@ $env:DATABASE_URL = "postgresql+psycopg://finsight:your-local-password@localhost
 python -m uvicorn backend.main:app --reload
 ```
 
-`docker compose up --build` starts the API and a local PostgreSQL database. The compose password is for local development only; provide a strong secret before sharing or deploying the stack.
+`docker compose up --build` starts the API and a local PostgreSQL database. Set an explicit password first; use a unique high-entropy value and keep it out of source control:
+
+```powershell
+$env:POSTGRES_PASSWORD = "replace-with-a-unique-local-password"
+docker compose up --build
+```
 
 ## Ledger behavior
 
@@ -58,4 +63,4 @@ The focused tests cover account isolation, transfer neutrality, posted-versus-pe
 
 This is intentionally the first phase, not the full product brief. Budgets, goals, recurring bills, liabilities/assets, editable transaction history, CSV import, the Financial Health Radar, Digital Twin scenarios, and assistant/search features are not wired to persisted data yet. Market prices and external bank feeds are not connected; no randomized market ticks are shown as real updates. The dashboard's live sync means user-entered ledger changes are persisted and other open sessions refresh within about 10 seconds.
 
-Before production use, add Alembic migrations, rate limiting, CSRF/XSS hardening and a CSP, secure deployment secrets, backup/restore procedures, and a reviewed identity/session design. Do not use real financial records on an internet-accessible deployment until those gates are complete.
+Before production use, add Alembic migrations, a distributed rate limiter at the trusted edge, secure deployment secrets, backup/restore procedures, and a reviewed identity/session design. Configure TLS at the trusted ingress and serve the frontend and API from the same origin. The built-in auth throttle is process-local and is not sufficient by itself for a multi-worker or multi-instance public deployment. Do not use real financial records on an internet-accessible deployment until those gates are complete.

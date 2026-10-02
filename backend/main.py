@@ -1,12 +1,16 @@
 from contextlib import asynccontextmanager
+from collections import deque
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import hashlib
 import json
+import os
 from pathlib import Path
+from threading import Lock
+from time import monotonic
 
-from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import func, select
@@ -26,7 +30,15 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="FinSight API", version="0.1.0", lifespan=lifespan)
+production = os.getenv("APP_ENV", "development").lower() == "production"
+app = FastAPI(
+    title="FinSight API",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url=None if production else "/docs",
+    redoc_url=None if production else "/redoc",
+    openapi_url=None if production else "/openapi.json",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
@@ -35,6 +47,78 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
+
+
+class AuthRateLimiter:
+    def __init__(self, limit: int = 10, window_seconds: int = 60, max_clients: int = 4096):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.max_clients = max_clients
+        self.attempts: dict[str, deque[float]] = {}
+        self.lock = Lock()
+
+    def retry_after(self, client_ip: str) -> int | None:
+        now = monotonic()
+        cutoff = now - self.window_seconds
+        with self.lock:
+            attempts = self.attempts.get(client_ip)
+            if attempts is None:
+                if len(self.attempts) >= self.max_clients:
+                    for known_ip, known_attempts in list(self.attempts.items()):
+                        while known_attempts and known_attempts[0] <= cutoff:
+                            known_attempts.popleft()
+                        if not known_attempts:
+                            del self.attempts[known_ip]
+                    if len(self.attempts) >= self.max_clients:
+                        return self.window_seconds
+                attempts = self.attempts.setdefault(client_ip, deque())
+            while attempts and attempts[0] <= cutoff:
+                attempts.popleft()
+            if len(attempts) >= self.limit:
+                return max(1, int(attempts[0] + self.window_seconds - now + 0.999))
+            attempts.append(now)
+            return None
+
+    def clear(self):
+        with self.lock:
+            self.attempts.clear()
+
+
+auth_rate_limiter = AuthRateLimiter()
+
+
+@app.middleware("http")
+async def apply_security_controls(request: Request, call_next):
+    if request.url.path in {"/api/auth/login", "/api/auth/register"}:
+        client_ip = request.client.host if request.client else "unknown"
+        retry_after = auth_rate_limiter.retry_after(client_ip)
+        if retry_after is not None:
+            response = JSONResponse(
+                status_code=429,
+                content={"detail": "Too many authentication attempts. Try again later."},
+                headers={"Retry-After": str(retry_after)},
+            )
+        else:
+            response = await call_next(request)
+    else:
+        response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; "
+        "connect-src 'self'; object-src 'none'; base-uri 'self'; "
+        "frame-ancestors 'none'; form-action 'self'"
+    )
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    if production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return response
 
 
 @app.get("/", include_in_schema=False)

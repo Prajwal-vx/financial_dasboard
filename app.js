@@ -1304,15 +1304,13 @@
         clearInterval(tickTimer);
         tickTimer = null;
       }
+      apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
       sessionStorage.removeItem('finsight_session');
       state.apiToken = '';
       showAuth();
     });
   }
 
-  apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
-  sessionStorage.removeItem('finsight_session');
-  state.apiToken = '';
   async function enterApp() {
     try {
       await loadLiveLedger();

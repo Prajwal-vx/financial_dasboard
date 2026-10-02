@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.db import Base, get_db
-from backend.main import app
+from backend.main import app, auth_rate_limiter
 
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -103,3 +103,24 @@ def test_summary_counts_posted_flows_but_not_transfers_or_pending_entries():
     assert Decimal(result.json()["account_balance"]) == Decimal("115.00")
     assert Decimal(result.json()["monthly_income"]) == Decimal("25.00")
     assert Decimal(result.json()["monthly_expense"]) == Decimal("10.00")
+
+
+def test_auth_endpoints_reject_excessive_requests():
+    auth_rate_limiter.clear()
+    for _ in range(10):
+        response = client.post("/api/auth/login", json={"email": "missing@example.com", "password": "not-the-password"})
+        assert response.status_code == 401
+    response = client.post("/api/auth/login", json={"email": "missing@example.com", "password": "not-the-password"})
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+    auth_rate_limiter.clear()
+
+
+def test_security_headers_protect_api_responses():
+    headers = register("headers@example.com")
+    response = client.get("/api/summary", headers=headers)
+    assert response.status_code == 200
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+    assert response.headers["Cache-Control"] == "no-store"

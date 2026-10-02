@@ -6,8 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY backend ./backend
-COPY app.js index.html styles.css ./
+RUN useradd --create-home --uid 10001 app && mkdir /data && chown app:app /data
+COPY --chown=app:app backend ./backend
+COPY --chown=app:app app.js index.html styles.css ./
 
+ENV DATABASE_URL=sqlite:////data/finsight.db \
+    APP_ENV=production
+USER app
+VOLUME ["/data"]
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

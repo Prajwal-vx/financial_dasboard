@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: finsight
       POSTGRES_USER: finsight
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -18,8 +18,8 @@ services:
   app:
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://finsight:${POSTGRES_PASSWORD:-local-development-only}@db:5432/finsight
-      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://finsight:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment}@db:5432/finsight
+      APP_ENV: ${APP_ENV:-production}
     depends_on:
       db:
         condition: service_healthy
