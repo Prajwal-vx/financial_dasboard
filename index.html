@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Self Finance — Household ledger & NEPSE watch</title>
-  <meta name="description" content="Personal ledger for Nepali households: net worth, NEPSE watchlist, budgets, and cash flow.">
+  <title>FinSight — Financial Command Center</title>
+  <meta name="description" content="A private financial command center for accounts, transactions, and cash flow.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
   <div class="auth-screen" id="auth-screen">
     <div class="auth-card">
       <div class="auth-brand">
-        <div class="brand-mark" aria-label="Apex Finance logo">
+        <div class="brand-mark" aria-label="FinSight logo">
   <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
     <defs>
       <linearGradient id="auth-logo-grad" x1="0" x2="1" y1="1" y2="0">
@@ -32,20 +32,36 @@
   </svg>
 </div>
         <div>
-          <p class="auth-kicker">Self Finance</p>
-          <h1 class="auth-title" id="auth-heading">Open the demo</h1>
+          <p class="auth-kicker">FinSight</p>
+          <h1 class="auth-title" id="auth-heading">Sign in to your workspace</h1>
         </div>
       </div>
-      <p class="auth-lead" id="auth-lead">Demo only. This browser app has no account security. Do not enter real passwords or sensitive financial information.</p>
-
-      <button type="button" class="btn btn-primary auth-submit" id="enter-demo">Continue to demo</button>
+      <p class="auth-lead" id="auth-lead">Your financial records are stored in your own account.</p>
+      <form id="auth-form" class="modal-form">
+        <p class="form-error hidden" id="auth-error" role="alert"></p>
+        <div class="form-group hidden" id="auth-name-group">
+          <label for="auth-name">Name</label>
+          <input type="text" id="auth-name" maxlength="100" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="auth-email">Email</label>
+          <input type="email" id="auth-email" required maxlength="254" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" required minlength="12" maxlength="128" autocomplete="current-password">
+          <small id="auth-password-hint" class="text-muted">Use at least 12 characters.</small>
+        </div>
+        <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Sign in</button>
+      </form>
+      <button type="button" class="link-btn auth-mode-toggle" id="auth-mode-toggle">Create a new account</button>
     </div>
   </div>
 
   <div class="app-layout is-locked" id="app-layout" hidden>
     <aside class="sidebar" id="sidebar" aria-label="Primary">
       <div class="sidebar-brand">
-        <div class="brand-mark" aria-label="Apex Finance logo">
+        <div class="brand-mark" aria-label="FinSight logo">
   <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
     <defs>
       <linearGradient id="sidebar-logo-grad" x1="0" x2="1" y1="1" y2="0">
@@ -59,7 +75,7 @@
   </svg>
 </div>
         <div class="brand-info">
-          <span class="brand-name">Self Finance</span>
+          <span class="brand-name">FinSight</span>
           <span class="brand-badge">Ledger</span>
         </div>
       </div>
@@ -76,12 +92,15 @@
         </button>
         <button type="button" class="nav-item" data-view="markets">
           <i data-lucide="candlestick-chart" aria-hidden="true"></i>
-          <span>NEPSE</span>
-          <span class="nav-pill">Live</span>
+          <span>Market data</span>
         </button>
         <button type="button" class="nav-item" data-view="transactions">
           <i data-lucide="scroll-text" aria-hidden="true"></i>
           <span>Ledger</span>
+        </button>
+        <button type="button" class="nav-item" data-view="accounts">
+          <i data-lucide="landmark" aria-hidden="true"></i>
+          <span>Accounts</span>
         </button>
         <button type="button" class="nav-item" data-view="budgets">
           <i data-lucide="target" aria-hidden="true"></i>
@@ -101,13 +120,13 @@
 
       <div class="sidebar-card">
         <div class="health-header">
-          <div class="health-title">Health score</div>
-          <span class="health-score-badge" id="health-score-badge">94 / 100</span>
+          <div class="health-title">Ledger status</div>
+          <span class="health-score-badge" id="health-score-badge">Live</span>
         </div>
         <div class="health-progress-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="94" id="health-progress-wrap">
           <div class="health-progress-bar" id="health-progress-bar" style="width: 94%"></div>
         </div>
-        <p class="health-desc">Savings sit above a 50% target. Housing is the tightest cap this month.</p>
+        <p class="health-desc">Account balances and posted activity sync from your database.</p>
       </div>
 
       <div class="sidebar-footer">
@@ -123,7 +142,7 @@
     </aside>
 
     <div class="main-wrapper">
-      <p class="demo-security-notice" role="note">Demo only: this app has no real sign-in or data protection. Never enter real passwords or sensitive financial information.</p>
+      <p class="demo-security-notice" role="status" id="sync-status">Connected to your private ledger.</p>
       <header class="topbar">
         <div class="topbar-left">
           <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
@@ -131,7 +150,7 @@
           </button>
           <div class="search-box">
             <i data-lucide="search" aria-hidden="true"></i>
-            <input type="search" id="global-search" placeholder="Search NABIL, UPPER, rent, dividend…">
+            <input type="search" id="global-search" placeholder="Search descriptions, merchants, accounts…">
           </div>
         </div>
 
@@ -141,11 +160,6 @@
             <i data-lucide="globe" class="currency-icon" aria-hidden="true"></i>
             <select id="currency-select" class="currency-select">
               <option value="NPR" selected>NPR</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="JPY">JPY</option>
-              <option value="CAD">CAD</option>
             </select>
           </div>
 
@@ -206,8 +220,8 @@
         <section class="view-panel active" id="view-overview">
           <div class="page-title-row">
             <div>
-              <h1 class="page-title">Household books</h1>
-              <p class="page-subtitle" id="overview-greeting">Demo preview — no account is used.</p>
+              <h1 class="page-title">Financial command center</h1>
+              <p class="page-subtitle" id="overview-greeting">Your finances, grounded in your ledger.</p>
             </div>
             <div class="action-btn-group">
               <button type="button" class="btn btn-outline" id="btn-quick-transfer">
@@ -224,13 +238,13 @@
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-top">
-                <span class="kpi-label">Net worth</span>
+                <span class="kpi-label">Account balance</span>
                 <span class="kpi-icon"><i data-lucide="wallet" aria-hidden="true"></i></span>
               </div>
               <div class="kpi-value" id="kpi-net-worth-val">—</div>
               <div class="kpi-bottom">
-                <span class="trend-badge positive" id="kpi-nw-delta">+8.4% month</span>
-                <span class="kpi-comparison">all sleeves</span>
+                <span class="trend-badge" id="kpi-nw-delta">Live balance</span>
+                <span class="kpi-comparison">all active accounts</span>
               </div>
             </div>
             <div class="kpi-card">
@@ -240,7 +254,7 @@
               </div>
               <div class="kpi-value" id="kpi-income-val">—</div>
               <div class="kpi-bottom">
-                <span class="trend-badge positive">Consulting + rent</span>
+                <span class="trend-badge positive">Posted inflows</span>
                 <span class="kpi-comparison">this cycle</span>
               </div>
             </div>
@@ -251,19 +265,19 @@
               </div>
               <div class="kpi-value" id="kpi-expense-val">—</div>
               <div class="kpi-bottom">
-                <span class="trend-badge" id="kpi-expense-note">Includes SIP &amp; TMS buys</span>
-                <span class="kpi-comparison">living + invest</span>
+                <span class="trend-badge" id="kpi-expense-note">Posted outflows</span>
+                <span class="kpi-comparison">this month</span>
               </div>
             </div>
             <div class="kpi-card">
               <div class="kpi-top">
-                <span class="kpi-label">Saved / invested</span>
+                <span class="kpi-label">Savings rate</span>
                 <span class="kpi-icon text-brass"><i data-lucide="piggy-bank" aria-hidden="true"></i></span>
               </div>
               <div class="kpi-value" id="kpi-savings-val">—</div>
               <div class="kpi-bottom">
-                <span class="trend-badge positive">Target 50%</span>
-                <span class="kpi-comparison">after this month’s books</span>
+                <span class="trend-badge">Income less expenses</span>
+                <span class="kpi-comparison">this month</span>
               </div>
             </div>
           </div>
@@ -272,8 +286,8 @@
             <div class="card chart-card main-chart-card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Portfolio mark</h2>
-                  <p class="card-subtitle">Net worth in the selected currency</p>
+                  <h2 class="card-title">Ledger balance history</h2>
+                  <p class="card-subtitle">Closing account balances from posted activity</p>
                 </div>
                 <div class="btn-group time-filters" id="timeframe-selector" role="group" aria-label="Chart range">
                   <button type="button" class="time-btn" data-time="1W">1W</button>
@@ -292,9 +306,9 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Mix</h2>
-                  <p class="card-subtitle">Where the capital sits</p>
+                  <p class="card-subtitle">Current balances across active accounts</p>
                 </div>
-                <span class="badge badge-accent">5 sleeves</span>
+                <span class="badge badge-accent">Accounts</span>
               </div>
               <div class="card-body donut-body">
                 <div class="donut-chart-container">
@@ -313,8 +327,8 @@
             <div class="card market-card">
               <div class="card-header">
                 <div class="flex-align-center gap-2">
-                  <h2 class="card-title">Tape</h2>
-                  <span class="live-dot" title="Simulated ticks"></span>
+                  <h2 class="card-title">Market data</h2>
+                  <span class="live-dot" title="Sample market data"></span>
                 </div>
                 <button type="button" class="link-btn" id="btn-view-all-markets">Full board</button>
               </div>
@@ -365,7 +379,7 @@
           <div class="card full-width expense-breakdown-card">
             <div class="card-header">
               <div>
-                <h2 class="card-title">Where rupees went</h2>
+                  <h2 class="card-title">Where money went</h2>
                 <p class="card-subtitle">Click a category to filter the ledger</p>
               </div>
               <div class="badge badge-accent" id="overview-outflow-badge">Outflow —</div>
@@ -374,7 +388,7 @@
               <div class="stacked-bar-container">
                 <div class="stacked-bar-header">
                   <span>Share of this month</span>
-                  <span>10 books</span>
+                  <span>Posted expenses this month</span>
                 </div>
                 <div class="expense-bar-stacked" id="expense-stacked-bar"></div>
               </div>
@@ -450,7 +464,7 @@
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Five-year sketch</h2>
-                  <p class="card-subtitle">13.5% vs 24% CAGR on today’s mark — not a forecast</p>
+                  <p class="card-subtitle">Scenario projections are not available until a forecast model is connected.</p>
                 </div>
               </div>
               <div class="card-body chart-body">
@@ -464,7 +478,7 @@
           <div class="page-title-row">
             <div>
               <h1 class="page-title">NEPSE board</h1>
-              <p class="page-subtitle">Simulated ticks for demo — not a live feed from the exchange.</p>
+              <p class="page-subtitle">No exchange feed is connected to this workspace.</p>
             </div>
             <div class="live-feed-badge">
               <span class="live-pulse-dot"></span>
@@ -562,6 +576,7 @@
                   <option value="all">All</option>
                   <option value="credit">Credit</option>
                   <option value="debit">Debit</option>
+                  <option value="transfer">Transfer</option>
                 </select>
               </div>
               <div class="filter-group">
@@ -601,6 +616,25 @@
               <span id="tx-count-display"></span>
               <div class="pagination-btns" id="tx-pagination-btns"></div>
             </div>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-accounts">
+          <div class="page-title-row">
+            <div>
+              <h1 class="page-title">Accounts</h1>
+              <p class="page-subtitle">Balances are recalculated from posted ledger activity.</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-add-account"><i data-lucide="plus" aria-hidden="true"></i> Add account</button>
+          </div>
+          <div class="card full-width">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead><tr><th>Account</th><th>Type</th><th>Institution</th><th>Balance</th></tr></thead>
+                <tbody id="accounts-tbody"></tbody>
+              </table>
+            </div>
+            <p class="empty-hint hidden" id="accounts-empty">No accounts yet. Add one to start tracking your finances.</p>
           </div>
         </section>
 
@@ -712,6 +746,25 @@
           <button type="button" class="btn btn-ghost" id="btn-cancel-tx-modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Post</button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="add-account-modal" role="dialog" aria-modal="true" aria-labelledby="add-account-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="flex-align-center gap-2"><div class="modal-icon-badge"><i data-lucide="landmark" aria-hidden="true"></i></div><h3 class="modal-title" id="add-account-title">Add account</h3></div>
+        <button type="button" class="modal-close-btn" id="btn-close-account-modal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="add-account-form" class="modal-form">
+        <p class="form-error hidden" id="account-form-error" role="alert"></p>
+        <div class="form-grid">
+          <div class="form-group full-span"><label for="account-name">Name</label><input id="account-name" required maxlength="100" placeholder="Everyday checking"></div>
+          <div class="form-group"><label for="account-type">Type</label><select id="account-type"><option value="bank">Bank</option><option value="cash">Cash</option><option value="wallet">Wallet</option><option value="credit_card">Credit card</option><option value="investment">Investment</option><option value="loan">Loan</option><option value="other">Other</option></select></div>
+          <div class="form-group"><label for="account-institution">Institution</label><input id="account-institution" maxlength="100" placeholder="Optional"></div>
+          <div class="form-group full-span"><label for="account-opening-balance">Opening balance (NPR)</label><input id="account-opening-balance" type="number" min="0" step="0.01" value="0.00" required></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-ghost" id="btn-cancel-account-modal">Cancel</button><button type="submit" class="btn btn-primary">Save account</button></div>
       </form>
     </div>
   </div>

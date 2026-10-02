@@ -16,19 +16,18 @@
   };
 
   const state = {
-    user: { name: 'Demo user', email: '' },
+    user: null,
+    apiToken: '',
+    accounts: [],
+    categories: [],
+    lastSyncedAt: null,
     currentView: 'overview',
     currentCurrency: 'NPR',
     currentTheme: 'dark',
     activeTimeframe: '1Y',
     analyticsRange: 'ytd',
     exchangeRates: {
-      NPR: { rate: 1.0, symbol: 'Rs ', code: 'NPR' },
-      USD: { rate: 0.00746, symbol: '$', code: 'USD' },
-      EUR: { rate: 0.00685, symbol: '€', code: 'EUR' },
-      GBP: { rate: 0.00585, symbol: '£', code: 'GBP' },
-      JPY: { rate: 1.15, symbol: '¥', code: 'JPY' },
-      CAD: { rate: 0.0101, symbol: 'C$', code: 'CAD' }
+      NPR: { rate: 1.0, symbol: 'Rs ', code: 'NPR' }
     },
     metrics: {
       netWorthNPR: 168450000.0,
@@ -230,6 +229,119 @@
   let projectionChartInstance = null;
   let tickTimer = null;
 
+  function apiRequest(path, options) {
+    const requestOptions = options || {};
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, requestOptions.headers || {});
+    if (state.apiToken) headers.Authorization = `Bearer ${state.apiToken}`;
+    return fetch(path, Object.assign({}, requestOptions, { headers })).then(async (response) => {
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.detail || `Request failed (${response.status})`);
+      }
+      return response.status === 204 ? null : response.json();
+    });
+  }
+
+  function clearDemoState() {
+    state.metrics = { netWorthNPR: 0, monthlyIncomeNPR: 0, monthlyExpenseNPR: 0, savingsRate: 0, healthScore: 0 };
+    state.assetAllocations = [];
+    state.expenseCategories = [];
+    state.transactions = [];
+    state.goals = [];
+    state.marketAssets = [];
+    state.cashflow = { ytd: { labels: [], inflow: [], outflow: [] }, t12: { labels: [], inflow: [], outflow: [] } };
+    state.timeframeData = Object.fromEntries(['1W', '1M', '6M', '1Y', 'ALL'].map((key) => [key, { labels: [], values: [] }]));
+  }
+
+  async function loadLiveLedger() {
+    const [summary, accounts, categories, transactions] = await Promise.all([
+      apiRequest('/api/summary'), apiRequest('/api/accounts'), apiRequest('/api/categories'),
+      apiRequest('/api/transactions?limit=500')
+    ]);
+    state.accounts = accounts;
+    state.categories = categories;
+    const accountNames = new Map(accounts.map((account) => [account.id, account.name]));
+    const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
+    state.transactions = transactions.map((transaction) => ({
+      id: String(transaction.id),
+      date: transaction.transaction_date,
+      desc: transaction.description,
+      category: transaction.type === 'transfer' ? 'Transfer' : (categoryNames.get(transaction.category_id) || 'Uncategorized'),
+      account: transaction.type === 'transfer'
+        ? `${accountNames.get(transaction.account_id) || 'Account'} → ${accountNames.get(transaction.destination_account_id) || 'Account'}`
+        : (accountNames.get(transaction.account_id) || 'Account'),
+      amountNPR: Number(transaction.amount),
+      type: transaction.type === 'income' ? 'credit' : transaction.type === 'expense' ? 'debit' : 'transfer',
+      status: transaction.status === 'posted' ? 'Completed' : 'Pending'
+    }));
+    state.metrics.netWorthNPR = Number(summary.account_balance);
+    state.metrics.monthlyIncomeNPR = Number(summary.monthly_income);
+    state.metrics.monthlyExpenseNPR = Number(summary.monthly_expense);
+    recalcSavings();
+    const spendingByCategory = new Map();
+    const month = new Date().toISOString().slice(0, 7);
+    state.transactions.filter((tx) => tx.type === 'debit' && tx.status === 'Completed' && tx.date.startsWith(month)).forEach((tx) => {
+      spendingByCategory.set(tx.category, (spendingByCategory.get(tx.category) || 0) + tx.amountNPR);
+    });
+    state.expenseCategories = Array.from(spendingByCategory, ([name, spentNPR]) => ({
+      id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, icon: 'receipt',
+      colorClass: 'bg-food', hexColor: PALETTE.teal, spentNPR, capNPR: 0, subitems: []
+    }));
+    const positiveAccounts = accounts.filter((account) => Number(account.current_balance) > 0);
+    const positiveTotal = positiveAccounts.reduce((sum, account) => sum + Number(account.current_balance), 0);
+    state.assetAllocations = positiveAccounts.map((account, index) => ({
+      name: account.name,
+      amountNPR: Number(account.current_balance),
+      color: [PALETTE.brass, PALETTE.forest, PALETTE.ink, PALETTE.amber][index % 4],
+      pct: positiveTotal ? Number((Number(account.current_balance) / positiveTotal * 100).toFixed(1)) : 0
+    }));
+    populateLedgerOptions();
+    state.lastSyncedAt = new Date();
+    const syncStatus = document.getElementById('sync-status');
+    if (syncStatus) syncStatus.textContent = `Ledger synced ${state.lastSyncedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    updateKpiCards();
+    renderRecentTransactions();
+    renderFullTransactionsTable();
+    renderGoalsAndBudgets();
+    renderAccounts();
+    refreshAllCharts();
+  }
+
+  function populateLedgerOptions() {
+    const selectedCategory = document.getElementById('tx-category-filter')?.value || 'all';
+    const orderedCategories = state.categories.slice().sort((a, b) => (a.type === 'expense' ? -1 : 1) - (b.type === 'expense' ? -1 : 1));
+    const categoryOptions = orderedCategories.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('');
+    const transactionCategory = document.getElementById('tx-category');
+    const filterCategory = document.getElementById('tx-category-filter');
+    if (transactionCategory) transactionCategory.innerHTML = categoryOptions;
+    if (filterCategory) {
+      filterCategory.innerHTML = '<option value="all">All</option>' + state.categories.map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('');
+      filterCategory.value = selectedCategory;
+    }
+    const accountOptions = state.accounts.map((account) => `<option value="${account.id}">${escapeHtml(account.name)} (${formatCurrency(Number(account.current_balance))})</option>`).join('');
+    ['tx-account', 'transfer-from', 'transfer-to'].forEach((id) => {
+      const select = document.getElementById(id);
+      if (select) {
+        const selected = select.value;
+        select.innerHTML = accountOptions;
+        if (state.accounts.some((account) => String(account.id) === selected)) select.value = selected;
+      }
+    });
+    const transferTo = document.getElementById('transfer-to');
+    if (transferTo && state.accounts.length > 1) transferTo.selectedIndex = 1;
+  }
+
+  function renderAccounts() {
+    const tbody = document.getElementById('accounts-tbody');
+    const empty = document.getElementById('accounts-empty');
+    if (!tbody) return;
+    tbody.innerHTML = state.accounts.map((account) => `
+      <tr><td><strong>${escapeHtml(account.name)}</strong></td><td>${escapeHtml(account.account_type.replace('_', ' '))}</td>
+      <td>${escapeHtml(account.institution || '—')}</td><td class="tabular font-bold">${formatCurrency(Number(account.current_balance))}</td></tr>
+    `).join('');
+    if (empty) empty.classList.toggle('hidden', state.accounts.length > 0);
+  }
+
   function removeLegacyLocalAuthData() {
     try {
       localStorage.removeItem('self_finance_users');
@@ -256,14 +368,14 @@
       if (nameEl) nameEl.textContent = 'Signed out';
       if (emailEl) emailEl.textContent = '';
       if (avatarEl) avatarEl.textContent = '—';
-      if (greetEl) greetEl.textContent = 'Demo preview — no account is used.';
+      if (greetEl) greetEl.textContent = 'Your finances, grounded in your ledger.';
       return;
     }
     if (nameEl) nameEl.textContent = user.name;
     if (emailEl) emailEl.textContent = user.email;
     if (avatarEl) avatarEl.textContent = initialsFromName(user.name);
     if (greetEl) {
-      greetEl.textContent = `${user.name} — Shrawan close, NEPSE sleeve, and the household books.`;
+      greetEl.textContent = `${user.name} · ${user.email} · ${user.currency} workspace`;
     }
   }
 
@@ -386,18 +498,18 @@
     if (expenseEl) expenseEl.textContent = formatCurrency(state.metrics.monthlyExpenseNPR);
     if (savingsEl) savingsEl.textContent = `${state.metrics.savingsRate}%`;
     if (donutTotalEl) donutTotalEl.textContent = formatCurrency(state.metrics.netWorthNPR);
-    if (healthBadge) healthBadge.textContent = `${state.metrics.healthScore} / 100`;
-    if (healthBar) healthBar.style.width = `${state.metrics.healthScore}%`;
-    if (healthWrap) healthWrap.setAttribute('aria-valuenow', String(state.metrics.healthScore));
+    if (healthBadge) healthBadge.textContent = 'Live';
+    if (healthBar) healthBar.style.width = '100%';
+    if (healthWrap) healthWrap.setAttribute('aria-valuenow', '100');
     if (overviewOutflowBadge) overviewOutflowBadge.textContent = `Outflow ${formatCurrency(totalOutflow)}`;
 
     const totalCap = state.expenseCategories.reduce((s, c) => s + c.capNPR, 0);
     const usedPct = totalCap ? Math.round((totalOutflow / totalCap) * 100) : 0;
     if (budgetBadge) {
-      budgetBadge.textContent = `${formatCurrency(totalOutflow)} / ${formatCurrency(totalCap)} (${usedPct}%)`;
+      budgetBadge.textContent = totalCap ? `${formatCurrency(totalOutflow)} / ${formatCurrency(totalCap)} (${usedPct}%)` : 'No budgets set';
     }
     if (budgetStatus) {
-      budgetStatus.textContent = usedPct >= 90 ? 'Tight' : 'On track';
+      budgetStatus.textContent = totalCap ? (usedPct >= 90 ? 'Tight' : 'On track') : 'No budgets';
       budgetStatus.className = `badge ${usedPct >= 90 ? 'badge-warning' : 'badge-success'}`;
     }
 
@@ -433,7 +545,7 @@
 
     matrixGrid.innerHTML = state.expenseCategories.map((cat) => {
       const pctOfTotal = ((cat.spentNPR / totalOutflow) * 100).toFixed(1);
-      const budgetPct = Math.min(100, Math.round((cat.spentNPR / cat.capNPR) * 100));
+      const budgetPct = cat.capNPR ? Math.min(100, Math.round((cat.spentNPR / cat.capNPR) * 100)) : 0;
       const subitemsHtml = cat.subitems.map((sub) => `
         <span class="subitem-chip">${escapeHtml(sub.name)}: <strong>${formatCurrency(sub.amountNPR)}</strong></span>
       `).join('');
@@ -448,7 +560,7 @@
           </div>
           <div class="cat-amount-row">
             <span class="cat-main-amount tabular">${formatCurrency(cat.spentNPR)}</span>
-            <span class="cat-cap-limit">Cap ${formatCurrency(cat.capNPR)}</span>
+            <span class="cat-cap-limit">${cat.capNPR ? `Cap ${formatCurrency(cat.capNPR)}` : 'No budget'}</span>
           </div>
           <div class="progress-track">
             <div class="progress-fill" style="width:${budgetPct}%;background:${cat.hexColor}"></div>
@@ -617,18 +729,19 @@
     const tbody = document.getElementById('recent-transactions-tbody');
     if (!tbody) return;
     const recent = state.transactions.slice(0, 6);
-    tbody.innerHTML = recent.map((tx) => {
+    tbody.innerHTML = recent.length ? recent.map((tx) => {
       const isCredit = tx.type === 'credit';
+      const isTransfer = tx.type === 'transfer';
       return `
         <tr>
           <td><strong>${escapeHtml(tx.desc)}</strong></td>
           <td><span class="badge badge-accent">${escapeHtml(tx.category)}</span></td>
           <td class="text-muted">${escapeHtml(tx.date)}</td>
-          <td class="tabular ${isCredit ? 'text-emerald' : ''}">${isCredit ? '+' : '-'}${formatCurrency(tx.amountNPR)}</td>
+          <td class="tabular ${isCredit ? 'text-emerald' : ''}">${isTransfer ? '↔ ' : isCredit ? '+' : '-'}${formatCurrency(tx.amountNPR)}</td>
           <td><span class="badge ${tx.status === 'Completed' ? 'badge-success' : 'badge-warning'}">${escapeHtml(tx.status)}</span></td>
         </tr>
       `;
-    }).join('');
+    }).join('') : '<tr><td colspan="5" class="text-muted">No transactions yet. Add an entry to start your ledger.</td></tr>';
   }
 
   function renderFullTransactionsTable() {
@@ -666,13 +779,14 @@
 
     tbody.innerHTML = pagedList.map((tx) => {
       const isCredit = tx.type === 'credit';
+      const isTransfer = tx.type === 'transfer';
       return `
         <tr>
           <td class="tabular text-muted">${escapeHtml(tx.date)}</td>
           <td><strong>${escapeHtml(tx.desc)}</strong></td>
           <td><span class="badge badge-accent">${escapeHtml(tx.category)}</span></td>
           <td class="text-muted">${escapeHtml(tx.account)}</td>
-          <td class="tabular font-bold ${isCredit ? 'text-emerald' : ''}">${isCredit ? '+' : '-'}${formatCurrency(tx.amountNPR)}</td>
+          <td class="tabular font-bold ${isCredit ? 'text-emerald' : ''}">${isTransfer ? '↔ ' : isCredit ? '+' : '-'}${formatCurrency(tx.amountNPR)}</td>
           <td><span class="badge ${tx.status === 'Completed' ? 'badge-success' : 'badge-warning'}">${escapeHtml(tx.status)}</span></td>
           <td>
             <button type="button" class="icon-btn-ghost btn-delete-tx" data-id="${escapeHtml(tx.id)}" aria-label="Remove entry">
@@ -700,12 +814,11 @@
     refreshIcons(tbody);
     tbody.querySelectorAll('.btn-delete-tx').forEach((btn) => {
       btn.addEventListener('click', () => {
-        if (!window.confirm('Remove this entry from the demo ledger?')) return;
-        const id = btn.dataset.id;
-        state.transactions = state.transactions.filter((t) => t.id !== id);
-        showToast('Entry removed', 'info');
-        renderRecentTransactions();
-        renderFullTransactionsTable();
+        if (!window.confirm('Remove this entry from your ledger? The record will remain in the audit history.')) return;
+        apiRequest(`/api/transactions/${btn.dataset.id}`, { method: 'DELETE' })
+          .then(() => loadLiveLedger())
+          .then(() => showToast('Entry removed and balances recalculated', 'info'))
+          .catch((error) => showToast(error.message, 'warning'));
       });
     });
   }
@@ -713,7 +826,7 @@
   function renderGoalsAndBudgets() {
     const goalsOverviewContainer = document.getElementById('goals-list-container');
     if (goalsOverviewContainer) {
-      goalsOverviewContainer.innerHTML = state.goals.map((goal) => {
+      goalsOverviewContainer.innerHTML = state.goals.length ? state.goals.map((goal) => {
         const pct = Math.min(100, Math.round((goal.currentNPR / goal.targetNPR) * 100));
         return `
           <div class="goal-item">
@@ -724,12 +837,13 @@
             <div class="progress-track"><div class="progress-fill ${goal.color}" style="width:${pct}%"></div></div>
           </div>
         `;
-      }).join('');
+      }).join('') : '<p class="empty-hint">No goals saved yet.</p>';
     }
 
     const budgetBarsContainer = document.getElementById('budget-bars-container');
     if (budgetBarsContainer) {
-      budgetBarsContainer.innerHTML = state.expenseCategories.slice(0, 5).map((b) => {
+      const configuredBudgets = state.expenseCategories.filter((b) => b.capNPR > 0).slice(0, 5);
+      budgetBarsContainer.innerHTML = configuredBudgets.length ? configuredBudgets.map((b) => {
         const pct = Math.min(100, Math.round((b.spentNPR / b.capNPR) * 100));
         const color = pct >= 85 ? 'amber' : 'emerald';
         return `
@@ -741,12 +855,13 @@
             <div class="progress-track"><div class="progress-fill ${color}" style="width:${pct}%"></div></div>
           </div>
         `;
-      }).join('');
+      }).join('') : '<p class="empty-hint">No budgets are configured yet.</p>';
     }
 
     const detailedBudgetGrid = document.getElementById('detailed-budget-container');
     if (detailedBudgetGrid) {
-      detailedBudgetGrid.innerHTML = state.expenseCategories.map((b) => {
+      const configuredBudgets = state.expenseCategories.filter((b) => b.capNPR > 0);
+      detailedBudgetGrid.innerHTML = configuredBudgets.length ? configuredBudgets.map((b) => {
         const pct = Math.min(100, Math.round((b.spentNPR / b.capNPR) * 100));
         const remaining = b.capNPR - b.spentNPR;
         return `
@@ -763,12 +878,12 @@
             <span class="text-muted" style="font-size:12px">${remaining >= 0 ? formatCurrency(remaining) + ' left' : 'Over by ' + formatCurrency(Math.abs(remaining))}</span>
           </div>
         `;
-      }).join('');
+      }).join('') : '<p class="empty-hint">Add a budget to compare planned spending with actual transactions.</p>';
     }
 
     const goalsCardGrid = document.getElementById('goals-card-grid');
     if (goalsCardGrid) {
-      goalsCardGrid.innerHTML = state.goals.map((goal) => {
+      goalsCardGrid.innerHTML = state.goals.length ? state.goals.map((goal) => {
         const pct = Math.min(100, Math.round((goal.currentNPR / Math.max(goal.targetNPR, 1)) * 100));
         return `
           <div class="goal-card-box">
@@ -784,7 +899,7 @@
             <div class="progress-track"><div class="progress-fill ${goal.color}" style="width:${pct}%"></div></div>
           </div>
         `;
-      }).join('');
+      }).join('') : '<p class="empty-hint">Create a milestone to track a savings target.</p>';
     }
   }
 
@@ -800,12 +915,33 @@
     };
   }
 
+  function setChartEmptyState(canvas, message) {
+    if (!canvas) return;
+    canvas.hidden = Boolean(message);
+    let placeholder = canvas.parentElement.querySelector('.chart-empty-state');
+    if (message && !placeholder) {
+      placeholder = document.createElement('p');
+      placeholder.className = 'chart-empty-state';
+      canvas.parentElement.appendChild(placeholder);
+    }
+    if (placeholder) {
+      if (message) placeholder.textContent = message;
+      else placeholder.remove();
+    }
+  }
+
   function initPortfolioChart() {
     const ctx = document.getElementById('portfolioChart');
     if (!ctx || !window.Chart) return;
     if (portfolioChartInstance) portfolioChartInstance.destroy();
     const tc = getThemeColors();
     const activeData = state.timeframeData[state.activeTimeframe];
+    if (!activeData.values.length) {
+      portfolioChartInstance = null;
+      setChartEmptyState(ctx, 'Balance history is not available yet. Current balances use your accounts and posted transactions.');
+      return;
+    }
+    setChartEmptyState(ctx, '');
     const convertedValues = activeData.values.map((v) => v * state.exchangeRates[state.currentCurrency].rate);
     const canvasCtx = ctx.getContext('2d');
     const gradient = canvasCtx.createLinearGradient(0, 0, 0, 280);
@@ -877,6 +1013,12 @@
     const ctx = document.getElementById('assetDonutChart');
     if (!ctx || !window.Chart) return;
     if (assetDonutChartInstance) assetDonutChartInstance.destroy();
+    if (!state.assetAllocations.length) {
+      assetDonutChartInstance = null;
+      setChartEmptyState(ctx, 'Add an account balance to see your account mix.');
+      return;
+    }
+    setChartEmptyState(ctx, '');
     const tc = getThemeColors();
     assetDonutChartInstance = new Chart(ctx, {
       type: 'doughnut',
@@ -919,6 +1061,11 @@
     if (cfCtx) {
       if (cashflowChartInstance) cashflowChartInstance.destroy();
       const pack = state.cashflow[state.analyticsRange] || state.cashflow.ytd;
+      if (!pack.labels.length) {
+        cashflowChartInstance = null;
+        setChartEmptyState(cfCtx, 'Cash-flow history is not available yet. Current-month totals are shown above.');
+      } else {
+        setChartEmptyState(cfCtx, '');
       const curr = state.exchangeRates[state.currentCurrency].rate;
       cashflowChartInstance = new Chart(cfCtx, {
         type: 'bar',
@@ -952,11 +1099,17 @@
           }
         }
       });
+      }
     }
 
     const expCatCtx = document.getElementById('expenseCategoryChart');
     if (expCatCtx) {
       if (expenseCatChartInstance) expenseCatChartInstance.destroy();
+      if (!state.expenseCategories.length) {
+        expenseCatChartInstance = null;
+        setChartEmptyState(expCatCtx, 'No posted expenses in this month yet.');
+      } else {
+        setChartEmptyState(expCatCtx, '');
       expenseCatChartInstance = new Chart(expCatCtx, {
         type: 'doughnut',
         data: {
@@ -981,47 +1134,14 @@
           }
         }
       });
+      }
     }
 
     const projCtx = document.getElementById('projectionChart');
     if (projCtx) {
       if (projectionChartInstance) projectionChartInstance.destroy();
-      const years = ['2083', '2084', '2085', '2086', '2087', '2088'];
-      const conservative = [16.8, 19.1, 21.8, 24.9, 28.5, 32.8];
-      const optimistic = [16.8, 20.8, 26.0, 32.8, 41.5, 52.8];
-      const curr = state.exchangeRates[state.currentCurrency].rate;
-      projectionChartInstance = new Chart(projCtx, {
-        type: 'line',
-        data: {
-          labels: years,
-          datasets: [
-            { label: '13.5% CAGR', data: conservative.map((v) => v * 10000000 * curr), borderColor: PALETTE.ink, borderDash: [5, 5], tension: 0.25, fill: false },
-            { label: '24% CAGR', data: optimistic.map((v) => v * 10000000 * curr), borderColor: PALETTE.forest, tension: 0.25, fill: false }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: tc.textColor } },
-            tooltip: { backgroundColor: tc.tooltipBg, titleColor: tc.tooltipText, bodyColor: tc.tooltipText }
-          },
-          scales: {
-            x: { grid: { display: false }, ticks: { color: tc.textColor } },
-            y: {
-              grid: { color: tc.gridColor },
-              ticks: {
-                color: tc.textColor,
-                callback: (v) => {
-                  const sym = state.exchangeRates[state.currentCurrency].symbol;
-                  if (state.currentCurrency === 'NPR') return `${sym}${(v / 10000000).toFixed(1)} Cr`;
-                  return `${sym}${(v / 1000000).toFixed(1)}M`;
-                }
-              }
-            }
-          }
-        }
-      });
+      projectionChartInstance = null;
+      setChartEmptyState(projCtx, 'No scenario estimate is available yet.');
     }
   }
 
@@ -1089,15 +1209,7 @@
 
   function startLiveMarketFeed() {
     if (tickTimer) clearInterval(tickTimer);
-    tickTimer = setInterval(() => {
-      const count = Math.floor(Math.random() * 3) + 1;
-      for (let i = 0; i < count; i += 1) {
-        const asset = state.marketAssets[Math.floor(Math.random() * state.marketAssets.length)];
-        const delta = applyTick(asset);
-        patchTickerCell(asset, delta);
-      }
-      drawSparklines();
-    }, 1800);
+    tickTimer = null;
   }
 
   function exportTransactionsToCSV() {
@@ -1120,7 +1232,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `self-finance-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `finsight-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1145,34 +1257,82 @@
   }
 
   function setupAuthListeners() {
-    document.getElementById('enter-demo')?.addEventListener('click', () => {
-      state.user = { name: 'Demo user', email: '' };
-      enterApp();
+    let registering = false;
+    const nameGroup = document.getElementById('auth-name-group');
+    const nameInput = document.getElementById('auth-name');
+    const passwordInput = document.getElementById('auth-password');
+    const heading = document.getElementById('auth-heading');
+    const lead = document.getElementById('auth-lead');
+    const submit = document.getElementById('auth-submit');
+    const modeToggle = document.getElementById('auth-mode-toggle');
+    modeToggle?.addEventListener('click', () => {
+      registering = !registering;
+      nameGroup?.classList.toggle('hidden', !registering);
+      if (nameInput) nameInput.required = registering;
+      if (passwordInput) passwordInput.autocomplete = registering ? 'new-password' : 'current-password';
+      if (heading) heading.textContent = registering ? 'Create your workspace' : 'Sign in to your workspace';
+      if (lead) lead.textContent = registering ? 'Start with an empty, private ledger. You can add accounts and transactions next.' : 'Your financial records are stored in your own account.';
+      if (submit) submit.textContent = registering ? 'Create account' : 'Sign in';
+      modeToggle.textContent = registering ? 'Already have an account? Sign in' : 'Create a new account';
+      setFormError('auth-error', '');
+    });
+    document.getElementById('auth-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setFormError('auth-error', '');
+      const payload = {
+        email: document.getElementById('auth-email').value.trim(),
+        password: passwordInput.value
+      };
+      if (registering) payload.name = nameInput.value.trim();
+      submit.disabled = true;
+      try {
+        const session = await apiRequest(registering ? '/api/auth/register' : '/api/auth/login', {
+          method: 'POST', body: JSON.stringify(payload)
+        });
+        state.apiToken = session.access_token;
+        sessionStorage.setItem('finsight_session', state.apiToken);
+        state.user = session.user;
+        await enterApp();
+      } catch (error) {
+        setFormError('auth-error', error.message || 'Unable to sign in. Check your details and try again.');
+      } finally {
+        submit.disabled = false;
+      }
     });
     document.getElementById('btn-logout')?.addEventListener('click', () => {
       if (tickTimer) {
         clearInterval(tickTimer);
         tickTimer = null;
       }
+      sessionStorage.removeItem('finsight_session');
+      state.apiToken = '';
       showAuth();
-      showToast('Signed out', 'info');
     });
   }
 
-  function enterApp() {
-    showApp();
-    updateKpiCards();
-    renderMiniMarketTable();
-    renderRecentTransactions();
-    renderFullTransactionsTable();
-    renderGoalsAndBudgets();
-    refreshIcons();
-    startLiveMarketFeed();
-    animateKpiCards();
-    whenChartReady(() => {
-      initPortfolioChart();
-      initAssetDonutChart();
-    });
+  apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  sessionStorage.removeItem('finsight_session');
+  state.apiToken = '';
+  async function enterApp() {
+    try {
+      await loadLiveLedger();
+      refreshIcons();
+      animateKpiCards();
+      whenChartReady(() => {
+        initPortfolioChart();
+        initAssetDonutChart();
+      });
+      if (tickTimer) clearInterval(tickTimer);
+      tickTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') loadLiveLedger().catch(() => {
+          const syncStatus = document.getElementById('sync-status');
+          if (syncStatus) syncStatus.textContent = 'Connection interrupted. Retrying shortly.';
+        });
+      }, 10000);
+    } catch (error) {
+      showAuth();
+      setFormError('auth-error', error.message || 'Unable to load your ledger. Please sign in again.');
+    }
   }
 
   function setupEventListeners() {
@@ -1202,6 +1362,7 @@
           if (targetView === 'analytics') initAnalyticsCharts();
           if (targetView === 'markets') renderFullMarketTable();
           if (targetView === 'transactions') renderFullTransactionsTable();
+          if (targetView === 'accounts') renderAccounts();
           if (targetView === 'budgets') {
             renderGoalsAndBudgets();
             updateKpiCards();
@@ -1297,6 +1458,9 @@
     document.getElementById('btn-add-transaction-ledger')?.addEventListener('click', () => openModal('add-tx-modal'));
     document.getElementById('btn-close-tx-modal')?.addEventListener('click', () => closeModal('add-tx-modal'));
     document.getElementById('btn-cancel-tx-modal')?.addEventListener('click', () => closeModal('add-tx-modal'));
+    document.getElementById('btn-add-account')?.addEventListener('click', () => openModal('add-account-modal'));
+    document.getElementById('btn-close-account-modal')?.addEventListener('click', () => closeModal('add-account-modal'));
+    document.getElementById('btn-cancel-account-modal')?.addEventListener('click', () => closeModal('add-account-modal'));
     document.getElementById('btn-quick-transfer')?.addEventListener('click', () => openModal('transfer-modal'));
     document.getElementById('btn-close-transfer-modal')?.addEventListener('click', () => closeModal('transfer-modal'));
     document.getElementById('btn-cancel-transfer-modal')?.addEventListener('click', () => closeModal('transfer-modal'));
@@ -1318,82 +1482,97 @@
       e.preventDefault();
       setFormError('tx-form-error', '');
       const desc = document.getElementById('tx-desc').value.trim();
-      const amountNPR = parseFloat(document.getElementById('tx-amount').value);
-      const type = document.getElementById('tx-type').value;
-      const category = document.getElementById('tx-category').value;
-      const account = document.getElementById('tx-account').value;
+      const amount = document.getElementById('tx-amount').value;
+      const uiType = document.getElementById('tx-type').value;
+      const categoryId = Number(document.getElementById('tx-category').value);
+      const accountId = Number(document.getElementById('tx-account').value);
       const date = document.getElementById('tx-date').value || new Date().toISOString().slice(0, 10);
       const status = document.getElementById('tx-status').value;
+      const category = state.categories.find((item) => item.id === categoryId);
 
       if (!desc) return setFormError('tx-form-error', 'Add a description.');
-      if (!Number.isFinite(amountNPR) || amountNPR <= 0) {
-        return setFormError('tx-form-error', 'Amount must be a number greater than zero.');
+      if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(amount) || Number(amount) <= 0) {
+        return setFormError('tx-form-error', 'Enter an amount greater than zero with no more than two decimal places.');
       }
-      if (type === 'credit' && category !== 'Income') {
+      if (uiType === 'credit' && category?.type !== 'income') {
         return setFormError('tx-form-error', 'Credits belong on the Income book.');
       }
-      if (type === 'debit' && category === 'Income') {
+      if (uiType === 'debit' && category?.type !== 'expense') {
         return setFormError('tx-form-error', 'Debits cannot use the Income book.');
       }
+      apiRequest('/api/transactions', {
+        method: 'POST',
+        body: JSON.stringify({
+          account_id: accountId,
+          category_id: categoryId,
+          type: uiType === 'credit' ? 'income' : 'expense',
+          amount,
+          currency: state.accounts.find((account) => account.id === accountId)?.currency || 'NPR',
+          description: desc,
+          merchant: desc,
+          transaction_date: date,
+          status: status === 'Completed' ? 'posted' : 'pending'
+        })
+      }).then(async () => {
+        await loadLiveLedger();
+        closeModal('add-tx-modal');
+        e.target.reset();
+        document.getElementById('tx-date').value = new Date().toISOString().slice(0, 10);
+        showToast('Entry saved to your ledger', 'success');
+      }).catch((error) => setFormError('tx-form-error', error.message));
+    });
 
-      state.transactions.unshift({
-        id: `tx-${Date.now()}`,
-        date, desc, category, account, amountNPR, type, status
-      });
-
-      if (type === 'credit') {
-        state.metrics.monthlyIncomeNPR += amountNPR;
-        state.metrics.netWorthNPR += amountNPR;
-      } else {
-        state.metrics.netWorthNPR -= amountNPR;
-        const matchCat = state.expenseCategories.find((c) => c.name === category);
-        if (matchCat) {
-          matchCat.spentNPR += amountNPR;
-          matchCat.subitems.unshift({ name: desc.slice(0, 28), amountNPR });
-        }
+    document.getElementById('add-account-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      setFormError('account-form-error', '');
+      const openingBalance = document.getElementById('account-opening-balance').value;
+      if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(openingBalance)) {
+        return setFormError('account-form-error', 'Enter a valid opening balance with no more than two decimal places.');
       }
-
-      updateKpiCards();
-      renderRecentTransactions();
-      renderFullTransactionsTable();
-      renderGoalsAndBudgets();
-      refreshAllCharts();
-      closeModal('add-tx-modal');
-      e.target.reset();
-      const today = new Date().toISOString().slice(0, 10);
-      const txDateInput = document.getElementById('tx-date');
-      if (txDateInput) txDateInput.value = today;
-      showToast('Entry posted', 'success');
+      apiRequest('/api/accounts', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: document.getElementById('account-name').value.trim(),
+          account_type: document.getElementById('account-type').value,
+          institution: document.getElementById('account-institution').value.trim() || null,
+          opening_balance: openingBalance,
+          currency: 'NPR'
+        })
+      }).then(async () => {
+        await loadLiveLedger();
+        closeModal('add-account-modal');
+        e.target.reset();
+        document.getElementById('account-opening-balance').value = '0.00';
+        showToast('Account added', 'success');
+      }).catch((error) => setFormError('account-form-error', error.message));
     });
 
     document.getElementById('transfer-form')?.addEventListener('submit', (e) => {
       e.preventDefault();
       setFormError('transfer-form-error', '');
-      const from = document.getElementById('transfer-from').value;
-      const to = document.getElementById('transfer-to').value;
-      const amountNPR = parseFloat(document.getElementById('transfer-amount').value);
+      const from = Number(document.getElementById('transfer-from').value);
+      const to = Number(document.getElementById('transfer-to').value);
+      const amount = document.getElementById('transfer-amount').value;
       const note = document.getElementById('transfer-note').value.trim() || 'Internal move';
-      if (!Number.isFinite(amountNPR) || amountNPR < 1000) {
-        return setFormError('transfer-form-error', 'Minimum transfer is Rs 1,000.');
+      if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(amount) || Number(amount) <= 0) {
+        return setFormError('transfer-form-error', 'Enter an amount greater than zero with no more than two decimal places.');
       }
       if (from === to) {
         return setFormError('transfer-form-error', 'Pick two different accounts.');
       }
-      state.transactions.unshift({
-        id: `tx-${Date.now()}`,
-        date: new Date().toISOString().slice(0, 10),
-        desc: `Transfer to ${to} — ${note}`,
-        category: 'Transfer',
-        account: from,
-        amountNPR,
-        type: 'debit',
-        status: 'Completed'
-      });
-      renderRecentTransactions();
-      renderFullTransactionsTable();
-      closeModal('transfer-modal');
-      e.target.reset();
-      showToast(`Moved ${formatCurrency(amountNPR)}`, 'success');
+      apiRequest('/api/transactions', {
+        method: 'POST',
+        body: JSON.stringify({
+          account_id: from, destination_account_id: to, type: 'transfer', amount,
+          currency: state.accounts.find((account) => account.id === from)?.currency || 'NPR',
+          description: note, transaction_date: new Date().toISOString().slice(0, 10)
+        })
+      }).then(async () => {
+        await loadLiveLedger();
+        closeModal('transfer-modal');
+        e.target.reset();
+        showToast('Transfer recorded without changing total balance', 'success');
+      }).catch((error) => setFormError('transfer-form-error', error.message));
     });
 
     document.getElementById('goal-form')?.addEventListener('submit', (e) => {
@@ -1698,11 +1877,24 @@
 
   function init() {
     removeLegacyLocalAuthData();
+    clearDemoState();
     setupAuthListeners();
     setupEventListeners();
     refreshIcons();
     initFinanceBackground();
-    showAuth();
+    state.apiToken = sessionStorage.getItem('finsight_session') || '';
+    if (state.apiToken) {
+      apiRequest('/api/auth/me').then((user) => {
+        state.user = user;
+        return enterApp();
+      }).catch(() => {
+        sessionStorage.removeItem('finsight_session');
+        state.apiToken = '';
+        showAuth();
+      });
+    } else {
+      showAuth();
+    }
   }
 
   if (document.readyState === 'loading') {
