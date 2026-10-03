@@ -5,14 +5,14 @@
   'use strict';
 
   const PALETTE = {
-    brass: '#c4a574',
-    forest: '#3d8b65',
-    ink: '#7a9bb8',
-    amber: '#c9893a',
-    plum: '#8b6bb0',
-    rose: '#d4533e',
-    teal: '#6a9e8b',
-    blush: '#c47a94'
+    brass: '#f2bd43',
+    forest: '#48d98a',
+    ink: '#25c6d9',
+    amber: '#f2bd43',
+    plum: '#a58af5',
+    rose: '#f07883',
+    teal: '#25c6d9',
+    blush: '#ea78bb'
   };
 
   const DEFAULT_MARKET_ASSETS = [
