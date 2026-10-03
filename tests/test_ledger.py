@@ -145,3 +145,38 @@ def test_whitespace_only_names_and_descriptions_are_rejected():
         "description": "   ", "transaction_date": date.today().isoformat(),
     })
     assert invalid_transaction.status_code == 422
+
+
+def test_invalid_date_range_and_negative_transaction_id():
+    headers = register("range-test@example.com")
+    # start_date > end_date returns 422
+    response = client.get("/api/transactions?start_date=2026-12-01&end_date=2026-11-01", headers=headers)
+    assert response.status_code == 422
+
+    # negative transaction_id returns 404
+    response = client.delete("/api/transactions/-1", headers=headers)
+    assert response.status_code == 404
+
+
+def test_opening_balance_cent_precision_and_merchant_clean():
+    headers = register("precision-test@example.com")
+    # Opening balance with more than 2 decimal places is rejected
+    res = client.post("/api/accounts", headers=headers, json={
+        "name": "Invest", "account_type": "investment", "opening_balance": "100.123"
+    })
+    assert res.status_code == 422
+
+    # Clean whitespace in institution and merchant
+    res = client.post("/api/accounts", headers=headers, json={
+        "name": "Invest", "account_type": "investment", "institution": "   ", "opening_balance": "100.00"
+    })
+    assert res.status_code == 201
+    assert res.json()["institution"] is None
+
+    acc_id = res.json()["id"]
+    tx = client.post("/api/transactions", headers=headers, json={
+        "account_id": acc_id, "type": "expense", "amount": "10.00", "currency": "NPR",
+        "description": "Book", "merchant": "   ", "transaction_date": date.today().isoformat()
+    })
+    assert tx.status_code == 201
+    assert tx.json()["merchant"] is None

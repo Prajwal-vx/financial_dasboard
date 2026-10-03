@@ -34,6 +34,21 @@ class AccountInput(BaseModel):
     def trim_name(cls, value: str) -> str:
         return value.strip() if isinstance(value, str) else value
 
+    @field_validator("institution", mode="before")
+    @classmethod
+    def clean_institution(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            val = value.strip()
+            return val if val else None
+        return value
+
+    @field_validator("opening_balance")
+    @classmethod
+    def opening_balance_has_cent_precision(cls, value: Decimal) -> Decimal:
+        if value.as_tuple().exponent < -2:
+            raise ValueError("Opening balance supports at most two decimal places")
+        return value
+
 
 class TransactionInput(BaseModel):
     account_id: int = Field(gt=0)
@@ -52,6 +67,14 @@ class TransactionInput(BaseModel):
     @classmethod
     def trim_description(cls, value: str) -> str:
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("merchant", mode="before")
+    @classmethod
+    def clean_merchant(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            val = value.strip()
+            return val if val else None
+        return value
 
     @field_validator("amount")
     @classmethod
@@ -86,3 +109,55 @@ class TransactionOutput(BaseModel):
     transaction_date: date
     status: str
     source: str
+
+
+class CategoryInput(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    type: Literal["income", "expense"]
+    icon: str | None = Field(default=None, max_length=40)
+    color: str | None = Field(default=None, max_length=24)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trim_name(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
+
+
+class CategoryOutput(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    type: str
+    parent_id: int | None = None
+    icon: str | None = None
+    color: str | None = None
+    is_system: bool = False
+
+
+class UserOutput(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    email: EmailStr
+    currency: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOutput
+
+
+class AccountBalanceSummary(BaseModel):
+    account_id: int
+    balance: Decimal
+    currency: str
+
+
+class SummaryOutput(BaseModel):
+    accounts: list[AccountBalanceSummary]
+    account_balance: Decimal
+    monthly_income: Decimal
+    monthly_expense: Decimal
+    month_start: str
+    as_of: str

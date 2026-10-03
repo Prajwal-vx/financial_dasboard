@@ -18,10 +18,30 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.db import Base, engine, get_db
-from backend.ledger import account_balance, create_transaction
+from backend.ledger import account_balance, create_transaction, get_account_balances
 from backend.models import Account, AuditLog, Category, SessionToken, Transaction, User
-from backend.schemas import AccountInput, AccountOutput, LoginInput, RegisterInput, TransactionInput, TransactionOutput
-from backend.security import bearer, get_current_user, hash_password, issue_session, verify_password
+from backend.schemas import (
+    AccountBalanceSummary,
+    AccountInput,
+    AccountOutput,
+    AuthResponse,
+    CategoryInput,
+    CategoryOutput,
+    LoginInput,
+    RegisterInput,
+    SummaryOutput,
+    TransactionInput,
+    TransactionOutput,
+    UserOutput,
+)
+from backend.security import (
+    DUMMY_PASSWORD_HASH,
+    bearer,
+    get_current_user,
+    hash_password,
+    issue_session,
+    verify_password,
+)
 
 
 @asynccontextmanager
@@ -89,7 +109,19 @@ auth_rate_limiter = AuthRateLimiter()
 
 @app.middleware("http")
 async def apply_security_controls(request: Request, call_next):
-    if request.url.path in {"/api/auth/login", "/api/auth/register"}:
+    # Enforce request body size limit (1MB max for financial endpoints)
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > 1_048_576:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request payload too large"},
+                )
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
+
+    if request.method == "POST" and request.url.path in {"/api/auth/login", "/api/auth/register"}:
         client_ip = request.client.host if request.client else "unknown"
         retry_after = auth_rate_limiter.retry_after(client_ip)
         if retry_after is not None:
@@ -116,6 +148,8 @@ async def apply_security_controls(request: Request, call_next):
     )
     if request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
+    else:
+        response.headers.setdefault("Cache-Control", "no-cache")
     if production:
         response.headers["Strict-Transport-Security"] = "max-age=31536000"
     return response
@@ -141,7 +175,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/api/auth/register", status_code=201)
+@app.post("/api/auth/register", response_model=AuthResponse, status_code=201)
 def register(payload: RegisterInput, db: Session = Depends(get_db)):
     user = User(name=payload.name.strip(), email=payload.email.lower(), password_hash=hash_password(payload.password), currency=payload.currency)
     db.add(user)
@@ -161,17 +195,26 @@ def register(payload: RegisterInput, db: Session = Depends(get_db)):
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists")
-    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email, "currency": user.currency}}
+    return AuthResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+    )
 
 
-@app.post("/api/auth/login")
+@app.post("/api/auth/login", response_model=AuthResponse)
 def login(payload: LoginInput, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == payload.email.lower()))
-    if user is None or not verify_password(payload.password, user.password_hash):
+    password_ok = verify_password(payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH)
+    if user is None or not password_ok:
         raise HTTPException(status_code=401, detail="Email or password is incorrect")
     token = issue_session(db, user)
     db.commit()
-    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email, "currency": user.currency}}
+    return AuthResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+    )
 
 
 @app.post("/api/auth/logout", status_code=204)
@@ -180,6 +223,8 @@ def logout(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ):
+    if credentials is None:
+        return
     token_hash = hashlib.sha256(credentials.credentials.encode()).hexdigest()
     session = db.scalar(select(SessionToken).where(SessionToken.user_id == user.id, SessionToken.token_hash == token_hash))
     if session:
@@ -187,29 +232,94 @@ def logout(
         db.commit()
 
 
-@app.get("/api/auth/me")
+@app.get("/api/auth/me", response_model=UserOutput)
 def me(user: User = Depends(get_current_user)):
-    return {"id": user.id, "name": user.name, "email": user.email, "currency": user.currency}
+    return UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency)
 
 
-@app.get("/api/categories")
+@app.get("/api/categories", response_model=list[CategoryOutput])
 def list_categories(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.scalars(select(Category).where(Category.user_id == user.id).order_by(Category.name)).all()
+
+
+@app.post("/api/categories", response_model=CategoryOutput, status_code=201)
+def add_category(payload: CategoryInput, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    existing = db.scalar(select(Category).where(
+        Category.user_id == user.id,
+        func.lower(Category.name) == payload.name.lower(),
+        Category.type == payload.type,
+    ))
+    if existing:
+        raise HTTPException(status_code=409, detail="A category with this name and type already exists")
+    category = Category(
+        user_id=user.id,
+        name=payload.name,
+        type=payload.type,
+        icon=payload.icon,
+        color=payload.color,
+    )
+    db.add(category)
+    db.flush()
+    db.add(AuditLog(
+        user_id=user.id,
+        action="category.created",
+        entity_type="category",
+        entity_id=category.id,
+        new_value=json.dumps({"name": category.name, "type": category.type}),
+    ))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(category)
+    return category
 
 
 @app.get("/api/accounts", response_model=list[AccountOutput])
 def list_accounts(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     accounts = db.scalars(select(Account).where(Account.user_id == user.id, Account.status == "active").order_by(Account.id)).all()
-    return [account_output(db, account) for account in accounts]
+    balances = get_account_balances(db, user.id, accounts)
+    return [
+        AccountOutput(
+            id=account.id,
+            name=account.name,
+            account_type=account.account_type,
+            institution=account.institution,
+            currency=account.currency,
+            opening_balance=account.opening_balance,
+            current_balance=balances[account.id],
+        )
+        for account in accounts
+    ]
 
 
 @app.post("/api/accounts", response_model=AccountOutput, status_code=201)
 def add_account(payload: AccountInput, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if payload.currency != user.currency:
         raise HTTPException(status_code=422, detail=f"Accounts must use your workspace currency ({user.currency})")
+    existing = db.scalar(select(Account).where(
+        Account.user_id == user.id,
+        func.lower(Account.name) == payload.name.lower(),
+        Account.status == "active",
+    ))
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this name already exists")
     account = Account(user_id=user.id, **payload.model_dump())
     db.add(account)
-    db.commit()
+    db.flush()
+    db.add(AuditLog(
+        user_id=user.id,
+        action="account.created",
+        entity_type="account",
+        entity_id=account.id,
+        new_value=json.dumps({"name": account.name, "account_type": account.account_type, "opening_balance": str(account.opening_balance)}),
+    ))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(account)
     return account_output(db, account)
 
@@ -235,6 +345,8 @@ def list_transactions(
     start_date: date | None = None,
     end_date: date | None = None,
 ):
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=422, detail="start_date cannot be after end_date")
     query = select(Transaction).where(Transaction.user_id == user.id, Transaction.deleted_at.is_(None))
     if start_date:
         query = query.where(Transaction.transaction_date >= start_date)
@@ -250,6 +362,8 @@ def add_transaction(payload: TransactionInput, user: User = Depends(get_current_
 
 @app.delete("/api/transactions/{transaction_id}", status_code=204)
 def delete_transaction(transaction_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if transaction_id <= 0:
+        raise HTTPException(status_code=404, detail="Transaction was not found")
     transaction = db.scalar(select(Transaction).where(
         Transaction.id == transaction_id,
         Transaction.user_id == user.id,
@@ -257,7 +371,15 @@ def delete_transaction(transaction_id: int, user: User = Depends(get_current_use
     ))
     if transaction is None:
         raise HTTPException(status_code=404, detail="Transaction was not found")
-    old_value = {"amount": str(transaction.amount), "type": transaction.type, "description": transaction.description}
+    old_value = {
+        "amount": str(transaction.amount),
+        "type": transaction.type,
+        "description": transaction.description,
+        "account_id": transaction.account_id,
+        "destination_account_id": transaction.destination_account_id,
+        "category_id": transaction.category_id,
+        "transaction_date": transaction.transaction_date.isoformat(),
+    }
     transaction.deleted_at = datetime.now(timezone.utc)
     db.add(AuditLog(
         user_id=user.id,
@@ -266,14 +388,24 @@ def delete_transaction(transaction_id: int, user: User = Depends(get_current_use
         entity_id=transaction.id,
         old_value=json.dumps(old_value),
     ))
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
-@app.get("/api/summary")
+@app.get("/api/summary", response_model=SummaryOutput)
 def summary(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     accounts = db.scalars(select(Account).where(Account.user_id == user.id, Account.status == "active")).all()
-    balances = [{"account_id": account.id, "balance": account_balance(db, account), "currency": account.currency} for account in accounts]
-    month_start = date.today().replace(day=1)
+    balances_map = get_account_balances(db, user.id, accounts)
+    balances = [AccountBalanceSummary(account_id=account.id, balance=balances_map[account.id], currency=account.currency) for account in accounts]
+    today = date.today()
+    month_start = today.replace(day=1)
+    if month_start.month == 12:
+        next_month_start = date(month_start.year + 1, 1, 1)
+    else:
+        next_month_start = date(month_start.year, month_start.month + 1, 1)
     totals = db.execute(select(
         Transaction.type,
         func.coalesce(func.sum(Transaction.amount), 0),
@@ -282,14 +414,15 @@ def summary(user: User = Depends(get_current_user), db: Session = Depends(get_db
         Transaction.deleted_at.is_(None),
         Transaction.status == "posted",
         Transaction.transaction_date >= month_start,
+        Transaction.transaction_date < next_month_start,
         Transaction.type.in_(["income", "expense"]),
     ).group_by(Transaction.type)).all()
-    monthly = {kind: Decimal(amount or 0) for kind, amount in totals}
-    return {
-        "accounts": balances,
-        "account_balance": sum((item["balance"] for item in balances), Decimal("0.00")),
-        "monthly_income": monthly.get("income", Decimal("0.00")),
-        "monthly_expense": monthly.get("expense", Decimal("0.00")),
-        "month_start": month_start.isoformat(),
-        "as_of": datetime.now(timezone.utc).isoformat(),
-    }
+    monthly = {kind: Decimal(amount) if amount is not None else Decimal("0.00") for kind, amount in totals}
+    return SummaryOutput(
+        accounts=balances,
+        account_balance=sum((item.balance for item in balances), Decimal("0.00")),
+        monthly_income=monthly.get("income", Decimal("0.00")),
+        monthly_expense=monthly.get("expense", Decimal("0.00")),
+        month_start=month_start.isoformat(),
+        as_of=datetime.now(timezone.utc).isoformat(),
+    )

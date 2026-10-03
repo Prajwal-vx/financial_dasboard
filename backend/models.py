@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
@@ -36,7 +36,11 @@ class SessionToken(Base):
 
 class Account(Base):
     __tablename__ = "accounts"
-    __table_args__ = (CheckConstraint("opening_balance >= 0", name="ck_account_opening_balance_nonnegative"),)
+    __table_args__ = (
+        CheckConstraint("opening_balance >= 0", name="ck_account_opening_balance_nonnegative"),
+        CheckConstraint("status IN ('active', 'archived')", name="ck_account_status"),
+        CheckConstraint("account_type IN ('cash', 'bank', 'wallet', 'credit_card', 'investment', 'loan', 'other')", name="ck_account_type"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -52,7 +56,10 @@ class Account(Base):
 
 class Category(Base):
     __tablename__ = "categories"
-    __table_args__ = (UniqueConstraint("user_id", "name", "type", name="uq_category_user_name_type"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", "type", name="uq_category_user_name_type"),
+        CheckConstraint("type IN ('income', 'expense')", name="ck_category_type"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -73,6 +80,7 @@ class Transaction(Base):
         CheckConstraint("(type = 'transfer' AND destination_account_id IS NOT NULL) OR (type != 'transfer' AND destination_account_id IS NULL)", name="ck_transfer_destination"),
         Index("ix_transactions_user_date", "user_id", "transaction_date"),
         Index("ix_transactions_user_account", "user_id", "account_id"),
+        Index("ix_transactions_user_destination", "user_id", "destination_account_id"),
         Index("ix_transactions_user_category", "user_id", "category_id"),
         Index("ix_transactions_user_merchant", "user_id", "merchant"),
         Index("ix_transactions_user_type", "user_id", "type"),
@@ -88,7 +96,7 @@ class Transaction(Base):
     currency: Mapped[str] = mapped_column(String(3), default="NPR")
     merchant: Mapped[str | None] = mapped_column(String(120), index=True)
     description: Mapped[str] = mapped_column(String(240))
-    transaction_date: Mapped[datetime.date] = mapped_column(Date)
+    transaction_date: Mapped[date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(16), default="posted")
     source: Mapped[str] = mapped_column(String(24), default="manual")
     external_reference: Mapped[str | None] = mapped_column(String(120))

@@ -15,6 +15,31 @@
     blush: '#c47a94'
   };
 
+  const DEFAULT_MARKET_ASSETS = [
+    { id: 'nepse', symbol: 'NEPSE', name: 'NEPSE Index', category: 'indices', isIndex: true, priceNPR: 2842.60, changePct: 1.24, changeNPR: 34.80, dayLow: 2807.8, dayHigh: 2855.2, cap: 'Rs 4,512.4B', history: [2760, 2785, 2792, 2810, 2824, 2835, 2842.6] },
+    { id: 'sensitive', symbol: 'SENSITIVE', name: 'Sensitive (Class A)', category: 'indices', isIndex: true, priceNPR: 496.30, changePct: 0.98, changeNPR: 4.80, dayLow: 491.5, dayHigh: 498.0, cap: '—', history: [488, 490, 492, 491, 494, 495, 496.3] },
+    { id: 'banking_idx', symbol: 'BANKING', name: 'Banking sub-index', category: 'indices', isIndex: true, priceNPR: 1482.40, changePct: 1.28, changeNPR: 18.70, dayLow: 1463.7, dayHigh: 1490.5, cap: '—', history: [1440, 1452, 1458, 1465, 1472, 1478, 1482.4] },
+    { id: 'hydro_idx', symbol: 'HYDRO', name: 'Hydropower sub-index', category: 'indices', isIndex: true, priceNPR: 3248.10, changePct: 2.15, changeNPR: 68.40, dayLow: 3179.7, dayHigh: 3265.0, cap: '—', history: [3110, 3140, 3180, 3165, 3210, 3230, 3248.1] },
+    { id: 'nabil', symbol: 'NABIL', name: 'Nabil Bank', category: 'banks', isIndex: false, priceNPR: 628.00, changePct: 1.80, changeNPR: 11.10, dayLow: 616.9, dayHigh: 632.0, cap: 'Rs 169.8B', history: [608, 612, 615, 618, 622, 625, 628] },
+    { id: 'gbime', symbol: 'GBIME', name: 'Global IME Bank', category: 'banks', isIndex: false, priceNPR: 248.50, changePct: 0.65, changeNPR: 1.60, dayLow: 246.0, dayHigh: 251.0, cap: 'Rs 89.7B', history: [242, 244, 245, 247, 246, 248, 248.5] },
+    { id: 'nica', symbol: 'NICA', name: 'NIC Asia Bank', category: 'banks', isIndex: false, priceNPR: 482.00, changePct: -0.41, changeNPR: -2.00, dayLow: 480.0, dayHigh: 488.0, cap: 'Rs 71.9B', history: [490, 488, 485, 487, 486, 484, 482] },
+    { id: 'ebl', symbol: 'EBL', name: 'Everest Bank', category: 'banks', isIndex: false, priceNPR: 580.00, changePct: 1.75, changeNPR: 10.00, dayLow: 570.0, dayHigh: 585.0, cap: 'Rs 68.4B', history: [560, 565, 568, 572, 575, 578, 580] },
+    { id: 'scb', symbol: 'SCB', name: 'Standard Chartered Nepal', category: 'banks', isIndex: false, priceNPR: 615.00, changePct: 2.10, changeNPR: 12.60, dayLow: 602.4, dayHigh: 620.0, cap: 'Rs 57.8B', history: [592, 598, 602, 605, 610, 612, 615] },
+    { id: 'upper', symbol: 'UPPER', name: 'Upper Tamakoshi', category: 'hydro', isIndex: false, priceNPR: 272.00, changePct: 4.25, changeNPR: 11.10, dayLow: 260.9, dayHigh: 276.0, cap: 'Rs 57.1B', history: [248, 252, 258, 260, 265, 268, 272] },
+    { id: 'chcl', symbol: 'CHCL', name: 'Chilime Hydropower', category: 'hydro', isIndex: false, priceNPR: 524.00, changePct: 1.15, changeNPR: 5.95, dayLow: 518.0, dayHigh: 529.0, cap: 'Rs 41.8B', history: [508, 512, 515, 519, 520, 522, 524] },
+    { id: 'shpc', symbol: 'SHPC', name: 'Sanima Mai', category: 'hydro', isIndex: false, priceNPR: 348.00, changePct: 2.35, changeNPR: 8.00, dayLow: 340.0, dayHigh: 352.0, cap: 'Rs 11.5B', history: [332, 336, 340, 338, 342, 345, 348] },
+    { id: 'bpcl', symbol: 'BPCL', name: 'Butwal Power', category: 'hydro', isIndex: false, priceNPR: 385.00, changePct: 0.78, changeNPR: 3.00, dayLow: 382.0, dayHigh: 390.0, cap: 'Rs 13.1B', history: [375, 378, 380, 382, 383, 384, 385] },
+    { id: 'nric', symbol: 'NRIC', name: 'Nepal Reinsurance', category: 'insurance', isIndex: false, priceNPR: 855.00, changePct: 3.05, changeNPR: 25.30, dayLow: 830.0, dayHigh: 865.0, cap: 'Rs 110.2B', history: [810, 822, 828, 835, 842, 848, 855] },
+    { id: 'hrl', symbol: 'HRL', name: 'Himalayan Reinsurance', category: 'insurance', isIndex: false, priceNPR: 724.00, changePct: 2.45, changeNPR: 17.30, dayLow: 706.7, dayHigh: 732.0, cap: 'Rs 72.4B', history: [685, 694, 702, 710, 715, 719, 724] },
+    { id: 'nlic', symbol: 'NLIC', name: 'Nepal Life Insurance', category: 'insurance', isIndex: false, priceNPR: 685.00, changePct: 1.05, changeNPR: 7.10, dayLow: 677.9, dayHigh: 692.0, cap: 'Rs 56.2B', history: [668, 672, 675, 679, 680, 682, 685] },
+    { id: 'cbbl', symbol: 'CBBL', name: 'Chhimek Laghubitta', category: 'microfinance', isIndex: false, priceNPR: 995.00, changePct: 1.65, changeNPR: 16.15, dayLow: 978.8, dayHigh: 1005.0, cap: 'Rs 29.6B', history: [955, 965, 972, 980, 988, 990, 995] },
+    { id: 'skbbl', symbol: 'SKBBL', name: 'Sana Kisan Bikas', category: 'microfinance', isIndex: false, priceNPR: 880.00, changePct: 0.92, changeNPR: 8.00, dayLow: 872.0, dayHigh: 888.0, cap: 'Rs 28.1B', history: [858, 864, 869, 872, 875, 878, 880] },
+    { id: 'ntc', symbol: 'NTC', name: 'Nepal Telecom', category: 'others', isIndex: false, priceNPR: 892.00, changePct: 0.45, changeNPR: 4.00, dayLow: 888.0, dayHigh: 898.0, cap: 'Rs 160.5B', history: [880, 884, 885, 887, 890, 891, 892] },
+    { id: 'shivm', symbol: 'SHIVM', name: 'Shivam Cement', category: 'others', isIndex: false, priceNPR: 542.00, changePct: 5.12, changeNPR: 26.40, dayLow: 515.6, dayHigh: 550.0, cap: 'Rs 29.3B', history: [498, 506, 515, 524, 530, 536, 542] },
+    { id: 'hdl', symbol: 'HDL', name: 'Himalayan Distillery', category: 'others', isIndex: false, priceNPR: 1648.00, changePct: -1.20, changeNPR: -20.00, dayLow: 1640.0, dayHigh: 1680.0, cap: 'Rs 38.6B', history: [1690, 1680, 1675, 1668, 1660, 1655, 1648] },
+    { id: 'cit', symbol: 'CIT', name: 'Citizen Investment Trust', category: 'others', isIndex: false, priceNPR: 2360.00, changePct: 0.80, changeNPR: 18.70, dayLow: 2341.3, dayHigh: 2380.0, cap: 'Rs 125.1B', history: [2310, 2325, 2335, 2345, 2350, 2355, 2360] }
+  ];
+
   const state = {
     user: null,
     apiToken: '',
@@ -170,30 +195,7 @@
         values: [72000000, 96000000, 122000000, 145000000, 168450000]
       }
     },
-    marketAssets: [
-      { id: 'nepse', symbol: 'NEPSE', name: 'NEPSE Index', category: 'indices', isIndex: true, priceNPR: 2842.60, changePct: 1.24, changeNPR: 34.80, dayLow: 2807.8, dayHigh: 2855.2, cap: 'Rs 4,512.4B', history: [2760, 2785, 2792, 2810, 2824, 2835, 2842.6] },
-      { id: 'sensitive', symbol: 'SENSITIVE', name: 'Sensitive (Class A)', category: 'indices', isIndex: true, priceNPR: 496.30, changePct: 0.98, changeNPR: 4.80, dayLow: 491.5, dayHigh: 498.0, cap: '—', history: [488, 490, 492, 491, 494, 495, 496.3] },
-      { id: 'banking_idx', symbol: 'BANKING', name: 'Banking sub-index', category: 'indices', isIndex: true, priceNPR: 1482.40, changePct: 1.28, changeNPR: 18.70, dayLow: 1463.7, dayHigh: 1490.5, cap: '—', history: [1440, 1452, 1458, 1465, 1472, 1478, 1482.4] },
-      { id: 'hydro_idx', symbol: 'HYDRO', name: 'Hydropower sub-index', category: 'indices', isIndex: true, priceNPR: 3248.10, changePct: 2.15, changeNPR: 68.40, dayLow: 3179.7, dayHigh: 3265.0, cap: '—', history: [3110, 3140, 3180, 3165, 3210, 3230, 3248.1] },
-      { id: 'nabil', symbol: 'NABIL', name: 'Nabil Bank', category: 'banks', isIndex: false, priceNPR: 628.00, changePct: 1.80, changeNPR: 11.10, dayLow: 616.9, dayHigh: 632.0, cap: 'Rs 169.8B', history: [608, 612, 615, 618, 622, 625, 628] },
-      { id: 'gbime', symbol: 'GBIME', name: 'Global IME Bank', category: 'banks', isIndex: false, priceNPR: 248.50, changePct: 0.65, changeNPR: 1.60, dayLow: 246.0, dayHigh: 251.0, cap: 'Rs 89.7B', history: [242, 244, 245, 247, 246, 248, 248.5] },
-      { id: 'nica', symbol: 'NICA', name: 'NIC Asia Bank', category: 'banks', isIndex: false, priceNPR: 482.00, changePct: -0.41, changeNPR: -2.00, dayLow: 480.0, dayHigh: 488.0, cap: 'Rs 71.9B', history: [490, 488, 485, 487, 486, 484, 482] },
-      { id: 'ebl', symbol: 'EBL', name: 'Everest Bank', category: 'banks', isIndex: false, priceNPR: 580.00, changePct: 1.75, changeNPR: 10.00, dayLow: 570.0, dayHigh: 585.0, cap: 'Rs 68.4B', history: [560, 565, 568, 572, 575, 578, 580] },
-      { id: 'scb', symbol: 'SCB', name: 'Standard Chartered Nepal', category: 'banks', isIndex: false, priceNPR: 615.00, changePct: 2.10, changeNPR: 12.60, dayLow: 602.4, dayHigh: 620.0, cap: 'Rs 57.8B', history: [592, 598, 602, 605, 610, 612, 615] },
-      { id: 'upper', symbol: 'UPPER', name: 'Upper Tamakoshi', category: 'hydro', isIndex: false, priceNPR: 272.00, changePct: 4.25, changeNPR: 11.10, dayLow: 260.9, dayHigh: 276.0, cap: 'Rs 57.1B', history: [248, 252, 258, 260, 265, 268, 272] },
-      { id: 'chcl', symbol: 'CHCL', name: 'Chilime Hydropower', category: 'hydro', isIndex: false, priceNPR: 524.00, changePct: 1.15, changeNPR: 5.95, dayLow: 518.0, dayHigh: 529.0, cap: 'Rs 41.8B', history: [508, 512, 515, 519, 520, 522, 524] },
-      { id: 'shpc', symbol: 'SHPC', name: 'Sanima Mai', category: 'hydro', isIndex: false, priceNPR: 348.00, changePct: 2.35, changeNPR: 8.00, dayLow: 340.0, dayHigh: 352.0, cap: 'Rs 11.5B', history: [332, 336, 340, 338, 342, 345, 348] },
-      { id: 'bpcl', symbol: 'BPCL', name: 'Butwal Power', category: 'hydro', isIndex: false, priceNPR: 385.00, changePct: 0.78, changeNPR: 3.00, dayLow: 382.0, dayHigh: 390.0, cap: 'Rs 13.1B', history: [375, 378, 380, 382, 383, 384, 385] },
-      { id: 'nric', symbol: 'NRIC', name: 'Nepal Reinsurance', category: 'insurance', isIndex: false, priceNPR: 855.00, changePct: 3.05, changeNPR: 25.30, dayLow: 830.0, dayHigh: 865.0, cap: 'Rs 110.2B', history: [810, 822, 828, 835, 842, 848, 855] },
-      { id: 'hrl', symbol: 'HRL', name: 'Himalayan Reinsurance', category: 'insurance', isIndex: false, priceNPR: 724.00, changePct: 2.45, changeNPR: 17.30, dayLow: 706.7, dayHigh: 732.0, cap: 'Rs 72.4B', history: [685, 694, 702, 710, 715, 719, 724] },
-      { id: 'nlic', symbol: 'NLIC', name: 'Nepal Life Insurance', category: 'insurance', isIndex: false, priceNPR: 685.00, changePct: 1.05, changeNPR: 7.10, dayLow: 677.9, dayHigh: 692.0, cap: 'Rs 56.2B', history: [668, 672, 675, 679, 680, 682, 685] },
-      { id: 'cbbl', symbol: 'CBBL', name: 'Chhimek Laghubitta', category: 'microfinance', isIndex: false, priceNPR: 995.00, changePct: 1.65, changeNPR: 16.15, dayLow: 978.8, dayHigh: 1005.0, cap: 'Rs 29.6B', history: [955, 965, 972, 980, 988, 990, 995] },
-      { id: 'skbbl', symbol: 'SKBBL', name: 'Sana Kisan Bikas', category: 'microfinance', isIndex: false, priceNPR: 880.00, changePct: 0.92, changeNPR: 8.00, dayLow: 872.0, dayHigh: 888.0, cap: 'Rs 28.1B', history: [858, 864, 869, 872, 875, 878, 880] },
-      { id: 'ntc', symbol: 'NTC', name: 'Nepal Telecom', category: 'others', isIndex: false, priceNPR: 892.00, changePct: 0.45, changeNPR: 4.00, dayLow: 888.0, dayHigh: 898.0, cap: 'Rs 160.5B', history: [880, 884, 885, 887, 890, 891, 892] },
-      { id: 'shivm', symbol: 'SHIVM', name: 'Shivam Cement', category: 'others', isIndex: false, priceNPR: 542.00, changePct: 5.12, changeNPR: 26.40, dayLow: 515.6, dayHigh: 550.0, cap: 'Rs 29.3B', history: [498, 506, 515, 524, 530, 536, 542] },
-      { id: 'hdl', symbol: 'HDL', name: 'Himalayan Distillery', category: 'others', isIndex: false, priceNPR: 1648.00, changePct: -1.20, changeNPR: -20.00, dayLow: 1640.0, dayHigh: 1680.0, cap: 'Rs 38.6B', history: [1690, 1680, 1675, 1668, 1660, 1655, 1648] },
-      { id: 'cit', symbol: 'CIT', name: 'Citizen Investment Trust', category: 'others', isIndex: false, priceNPR: 2360.00, changePct: 0.80, changeNPR: 18.70, dayLow: 2341.3, dayHigh: 2380.0, cap: 'Rs 125.1B', history: [2310, 2325, 2335, 2345, 2350, 2355, 2360] }
-    ],
+    marketAssets: DEFAULT_MARKET_ASSETS.map((a) => Object.assign({}, a, { history: a.history.slice() })),
     transactions: [
       { id: 'tx-001', date: '2026-08-14', desc: 'Baluwatar rent & society', category: 'Housing & Rent', account: 'Nabil Bank Direct (...4819)', amountNPR: 320000.00, type: 'debit', status: 'Completed' },
       { id: 'tx-002', date: '2026-08-13', desc: 'Bhatbhateni groceries', category: 'Food & Groceries', account: 'NIC Asia Platinum (...1004)', amountNPR: 85000.00, type: 'debit', status: 'Completed' },
@@ -228,6 +230,7 @@
   let expenseCatChartInstance = null;
   let projectionChartInstance = null;
   let tickTimer = null;
+  let marketTickTimer = null;
 
   function apiRequest(path, options) {
     const requestOptions = options || {};
@@ -248,7 +251,7 @@
     state.expenseCategories = [];
     state.transactions = [];
     state.goals = [];
-    state.marketAssets = [];
+    state.marketAssets = DEFAULT_MARKET_ASSETS.map((a) => Object.assign({}, a, { history: a.history.slice() }));
     state.cashflow = { ytd: { labels: [], inflow: [], outflow: [] }, t12: { labels: [], inflow: [], outflow: [] } };
     state.timeframeData = Object.fromEntries(['1W', '1M', '6M', '1Y', 'ALL'].map((key) => [key, { labels: [], values: [] }]));
   }
@@ -302,18 +305,30 @@
     updateKpiCards();
     renderRecentTransactions();
     renderFullTransactionsTable();
+    loadPersistedGoals();
     renderGoalsAndBudgets();
     renderAccounts();
     refreshAllCharts();
   }
 
+  function updateTxCategoryOptions() {
+    const transactionCategory = document.getElementById('tx-category');
+    if (!transactionCategory) return;
+    const currentUiType = document.getElementById('tx-type')?.value || 'debit';
+    const targetKind = currentUiType === 'credit' ? 'income' : 'expense';
+    const relevantCategories = state.categories.filter((c) => c.type === targetKind);
+    const displayCategories = relevantCategories.length ? relevantCategories : state.categories;
+    const selected = transactionCategory.value;
+    transactionCategory.innerHTML = displayCategories.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('');
+    if (displayCategories.some((c) => String(c.id) === selected)) {
+      transactionCategory.value = selected;
+    }
+  }
+
   function populateLedgerOptions() {
     const selectedCategory = document.getElementById('tx-category-filter')?.value || 'all';
-    const orderedCategories = state.categories.slice().sort((a, b) => (a.type === 'expense' ? -1 : 1) - (b.type === 'expense' ? -1 : 1));
-    const categoryOptions = orderedCategories.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('');
-    const transactionCategory = document.getElementById('tx-category');
+    updateTxCategoryOptions();
     const filterCategory = document.getElementById('tx-category-filter');
-    if (transactionCategory) transactionCategory.innerHTML = categoryOptions;
     if (filterCategory) {
       filterCategory.innerHTML = '<option value="all">All</option>' + state.categories.map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join('');
       filterCategory.value = selectedCategory;
@@ -369,6 +384,26 @@
     try {
       window[storageName].removeItem(key);
     } catch {}
+  }
+
+  function loadPersistedGoals() {
+    const userId = state.user?.id || 'default';
+    try {
+      const raw = readBrowserStorage('localStorage', `finsight_goals_${userId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) state.goals = parsed;
+      }
+    } catch (e) {
+      state.goals = [];
+    }
+  }
+
+  function savePersistedGoals() {
+    const userId = state.user?.id || 'default';
+    try {
+      writeBrowserStorage('localStorage', `finsight_goals_${userId}`, JSON.stringify(state.goals));
+    } catch (e) {}
   }
 
   function initialsFromName(name) {
@@ -427,7 +462,8 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function formatCurrency(amountInNPR, customCurrency = state.currentCurrency) {
@@ -1227,8 +1263,24 @@
   }
 
   function startLiveMarketFeed() {
-    if (tickTimer) clearInterval(tickTimer);
-    tickTimer = null;
+    if (marketTickTimer) clearInterval(marketTickTimer);
+    marketTickTimer = setInterval(() => {
+      if (document.visibilityState !== 'visible' || !state.marketAssets.length) return;
+      const count = Math.min(state.marketAssets.length, Math.floor(Math.random() * 2) + 1);
+      for (let i = 0; i < count; i++) {
+        const randIndex = Math.floor(Math.random() * state.marketAssets.length);
+        const asset = state.marketAssets[randIndex];
+        const delta = applyTick(asset);
+        patchTickerCell(asset, delta);
+      }
+    }, 1800);
+  }
+
+  function stopLiveMarketFeed() {
+    if (marketTickTimer) {
+      clearInterval(marketTickTimer);
+      marketTickTimer = null;
+    }
   }
 
   function exportTransactionsToCSV() {
@@ -1323,6 +1375,7 @@
         clearInterval(tickTimer);
         tickTimer = null;
       }
+      stopLiveMarketFeed();
       apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
       removeBrowserStorage('sessionStorage', 'finsight_session');
       state.apiToken = '';
@@ -1335,6 +1388,9 @@
       await loadLiveLedger();
       refreshIcons();
       animateKpiCards();
+      renderMiniMarketTable();
+      renderFullMarketTable();
+      startLiveMarketFeed();
       whenChartReady(() => {
         initPortfolioChart();
         initAssetDonutChart();
@@ -1610,10 +1666,15 @@
         return setFormError('goal-form-error', 'Saved amount cannot exceed the target.');
       }
       state.goals.push({ id: `g-${Date.now()}`, title, targetNPR, currentNPR, date, color: 'emerald' });
+      savePersistedGoals();
       renderGoalsAndBudgets();
       closeModal('goal-modal');
       e.target.reset();
       showToast('Milestone saved', 'success');
+    });
+
+    document.getElementById('tx-type')?.addEventListener('change', () => {
+      updateTxCategoryOptions();
     });
 
     const txSearch = document.getElementById('tx-search-input');

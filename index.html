@@ -32,8 +32,8 @@
   </svg>
 </div>
         <div>
-          <p class="auth-kicker">Financial Dasboard</p>
-          <h1 class="auth-title" id="auth-heading">Sign in to your Dasboard</h1>
+          <p class="auth-kicker">Financial Dashboard</p>
+          <h1 class="auth-title" id="auth-heading">Sign in to your Dashboard</h1>
         </div>
       </div>
       <p class="auth-lead" id="auth-lead">Your financial records are stored in your own account.</p>
@@ -135,7 +135,7 @@
           <span class="user-name" id="user-name">Signed out</span>
           <span class="user-tier" id="user-email"></span>
         </div>
-        <button type="button" class="icon-btn-ghost" id="btn-logout" aria-label="Exit demo" title="Exit demo">
+        <button type="button" class="icon-btn-ghost" id="btn-logout" aria-label="Sign out" title="Sign out">
           <i data-lucide="log-out" aria-hidden="true"></i>
         </button>
       </div>
@@ -176,35 +176,15 @@
           <div class="notif-wrapper">
             <button type="button" class="icon-btn notif-btn" id="notif-btn" aria-label="Notifications" aria-expanded="false" aria-controls="notif-dropdown">
               <i data-lucide="bell" aria-hidden="true"></i>
-              <span class="notif-dot" aria-hidden="true"></span>
+              <span class="notif-dot hidden" id="notif-dot" aria-hidden="true"></span>
             </button>
             <div class="notif-dropdown" id="notif-dropdown" role="region" aria-label="Notifications">
               <div class="notif-header">
-                <h3>Desk notes</h3>
-                <span class="badge badge-sm">3</span>
+                <h3>Ledger alerts</h3>
+                <span class="badge badge-sm" id="notif-count">0</span>
               </div>
-              <div class="notif-list">
-                <div class="notif-item unread">
-                  <div class="notif-icon-circle success"><i data-lucide="banknote" aria-hidden="true"></i></div>
-                  <div class="notif-body">
-                    <p class="notif-text"><strong>NABIL</strong> — 11.5% cash plus bonus announced.</p>
-                    <span class="notif-time">10 min</span>
-                  </div>
-                </div>
-                <div class="notif-item unread">
-                  <div class="notif-icon-circle info"><i data-lucide="activity" aria-hidden="true"></i></div>
-                  <div class="notif-body">
-                    <p class="notif-text"><strong>NEPSE</strong> cleared 2,840 with Rs 7.42B turnover.</p>
-                    <span class="notif-time">45 min</span>
-                  </div>
-                </div>
-                <div class="notif-item">
-                  <div class="notif-icon-circle warning"><i data-lucide="alert-triangle" aria-hidden="true"></i></div>
-                  <div class="notif-body">
-                    <p class="notif-text"><strong>UPPER</strong> printed +6.2% before noon.</p>
-                    <span class="notif-time">2 hr</span>
-                  </div>
-                </div>
+              <div class="notif-list" id="notif-list">
+                <p class="empty-hint p-4">No unread ledger alerts.</p>
               </div>
             </div>
           </div>
@@ -516,7 +496,6 @@
                       <th>Day range</th>
                       <th>Cap</th>
                       <th>7D</th>
-                      <th></th>
                     </tr>
                   </thead>
                   <tbody id="full-market-tbody"></tbody>
@@ -644,9 +623,14 @@
               <h1 class="page-title">Budgets &amp; milestones</h1>
               <p class="page-subtitle">Monthly caps and the amounts still to fund.</p>
             </div>
-            <button type="button" class="btn btn-primary" id="btn-open-create-goal">
-              <i data-lucide="plus-circle" aria-hidden="true"></i> New milestone
-            </button>
+            <div class="action-btn-group">
+              <button type="button" class="btn btn-outline" id="btn-open-set-budget">
+                <i data-lucide="sliders" aria-hidden="true"></i> Set monthly cap
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-open-create-goal">
+                <i data-lucide="plus-circle" aria-hidden="true"></i> New milestone
+              </button>
+            </div>
           </div>
           <div class="budgets-view-grid">
             <div class="card full-width">
@@ -707,28 +691,11 @@
           </div>
           <div class="form-group">
             <label for="tx-category">Book</label>
-            <select id="tx-category" required>
-              <option value="Housing & Rent">Housing &amp; Rent</option>
-              <option value="Food & Groceries">Food &amp; Groceries</option>
-              <option value="Education & Tuition">Education &amp; Tuition</option>
-              <option value="Health & Medical Care">Health &amp; Medical Care</option>
-              <option value="Utilities & Bills">Utilities &amp; Bills</option>
-              <option value="Transport & Fuel">Transport &amp; Fuel</option>
-              <option value="NEPSE & Investments">NEPSE &amp; Investments</option>
-              <option value="Shopping & Lifestyle">Shopping &amp; Lifestyle</option>
-              <option value="Entertainment & Travel">Entertainment &amp; Travel</option>
-              <option value="Family & Festivals">Family &amp; Festivals</option>
-              <option value="Income">Income</option>
-            </select>
+            <select id="tx-category" required></select>
           </div>
           <div class="form-group">
             <label for="tx-account">Account</label>
-            <select id="tx-account">
-              <option value="Nabil Bank Direct (...4819)">Nabil (...4819)</option>
-              <option value="Global IME Account (...9201)">Global IME (...9201)</option>
-              <option value="NIC Asia Platinum (...1004)">NIC Asia (...1004)</option>
-              <option value="TMS Broker 58 Collateral">TMS Broker 58</option>
-            </select>
+            <select id="tx-account" required></select>
           </div>
           <div class="form-group">
             <label for="tx-date">Date</label>
@@ -783,26 +750,17 @@
         <div class="form-grid">
           <div class="form-group">
             <label for="transfer-from">From</label>
-            <select id="transfer-from">
-              <option value="Nabil Bank Direct (...4819)">Nabil — Rs 24.5L</option>
-              <option value="Global IME Account (...9201)">Global IME — Rs 18.5L</option>
-              <option value="NIC Asia Platinum (...1004)">NIC Asia — Rs 9.5L</option>
-            </select>
+            <select id="transfer-from" required></select>
           </div>
           <div class="form-group">
             <label for="transfer-to">To</label>
-            <select id="transfer-to">
-              <option value="TMS Broker 58 Trading Collateral">TMS Broker 58</option>
-              <option value="Citizen Investment Trust (CIT) Pension">CIT</option>
-              <option value="NABIL Fixed Deposit (1 Year)">NABIL FD 1Y</option>
-              <option value="ConnectIPS / NCHL Direct Wire">ConnectIPS</option>
-            </select>
+            <select id="transfer-to" required></select>
           </div>
           <div class="form-group full-span">
             <label for="transfer-amount">Amount (NPR)</label>
             <div class="input-with-prefix">
               <span class="currency-prefix">Rs</span>
-              <input type="number" step="1000" min="1000" id="transfer-amount" required placeholder="50000">
+              <input type="number" step="0.01" min="0.01" id="transfer-amount" required placeholder="50000">
             </div>
           </div>
           <div class="form-group full-span">
