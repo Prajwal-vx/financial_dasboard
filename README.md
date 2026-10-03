@@ -18,6 +18,18 @@ python -m uvicorn backend.main:app --reload
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The local database is created as `finsight.db`. Create an account in the sign-in screen; a zero-balance Cash account and starter categories are created for that user. API documentation is at `/docs`.
 
+## Deploy to Vercel
+
+Vercel can deploy this FastAPI application as a Python Function. The root `app.py` exposes the FastAPI app for Vercel's framework detection. Connect this repository to Vercel and deploy with the default build settings; no separate frontend project is needed because the API serves the dashboard files.
+
+Before the first deployment:
+
+1. Create a PostgreSQL database with a hosted provider such as [Neon](https://neon.com/pricing). Use its pooled connection string when available and ensure the URL scheme is `postgresql+psycopg://` (SQLAlchemy uses the `psycopg` driver included in `requirements.txt`).
+2. In the Vercel project settings, add `DATABASE_URL` with that connection string and `APP_ENV` with value `production` for Production, Preview, and Development as appropriate. Keep the database URL secret; do not commit it.
+3. Deploy and open the Vercel URL. Register a test account and confirm the dashboard can load and save data.
+
+The bundled SQLite database is for local development only. Vercel Functions have a read-only deployment filesystem with temporary `/tmp` storage, so deployed records must use hosted PostgreSQL. Vercel's Python runtime is currently in beta; review its current plan and function limits before relying on the deployment. Free database plans also have usage and storage limits. Do not store real financial records until the production safeguards in this README are complete.
+
 The API issues a same-origin, HTTP-only session cookie after login or registration and reuses it automatically for subsequent requests. Browser storage is not used for the active session token.
 
 For PostgreSQL, set `DATABASE_URL` before starting the API, for example:
