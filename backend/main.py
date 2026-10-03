@@ -290,5 +290,6 @@ def summary(user: User = Depends(get_current_user), db: Session = Depends(get_db
         "account_balance": sum((item["balance"] for item in balances), Decimal("0.00")),
         "monthly_income": monthly.get("income", Decimal("0.00")),
         "monthly_expense": monthly.get("expense", Decimal("0.00")),
+        "month_start": month_start.isoformat(),
         "as_of": datetime.now(timezone.utc).isoformat(),
     }

@@ -11,6 +11,11 @@ class RegisterInput(BaseModel):
     password: str = Field(min_length=12, max_length=128)
     currency: str = Field(default="NPR", pattern="^[A-Z]{3}$")
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def trim_name(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
+
 
 class LoginInput(BaseModel):
     email: EmailStr
@@ -23,6 +28,11 @@ class AccountInput(BaseModel):
     institution: str | None = Field(default=None, max_length=100)
     currency: str = Field(default="NPR", pattern="^[A-Z]{3}$")
     opening_balance: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=18, decimal_places=2)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trim_name(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
 
 
 class TransactionInput(BaseModel):
@@ -37,6 +47,11 @@ class TransactionInput(BaseModel):
     transaction_date: date
     status: Literal["posted", "pending"] = "posted"
     source: Literal["manual", "import"] = "manual"
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def trim_description(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
 
     @field_validator("amount")
     @classmethod

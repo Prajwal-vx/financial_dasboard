@@ -100,6 +100,7 @@ def test_summary_counts_posted_flows_but_not_transfers_or_pending_entries():
         assert result.status_code == 201
     result = client.get("/api/summary", headers=headers)
     assert result.status_code == 200
+    assert result.json()["month_start"] == date.today().replace(day=1).isoformat()
     assert Decimal(result.json()["account_balance"]) == Decimal("115.00")
     assert Decimal(result.json()["monthly_income"]) == Decimal("25.00")
     assert Decimal(result.json()["monthly_expense"]) == Decimal("10.00")
@@ -124,3 +125,23 @@ def test_security_headers_protect_api_responses():
     assert response.headers["X-Frame-Options"] == "DENY"
     assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
     assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_whitespace_only_names_and_descriptions_are_rejected():
+    invalid_registration = client.post("/api/auth/register", json={
+        "name": "   ", "email": "blank-name@example.com", "password": "a-secure-test-password",
+    })
+    assert invalid_registration.status_code == 422
+
+    headers = register("trim-validation@example.com")
+    invalid_account = client.post("/api/accounts", headers=headers, json={
+        "name": "   ", "account_type": "bank",
+    })
+    assert invalid_account.status_code == 422
+
+    account = client.get("/api/accounts", headers=headers).json()[0]
+    invalid_transaction = client.post("/api/transactions", headers=headers, json={
+        "account_id": account["id"], "type": "expense", "amount": "1.00", "currency": "NPR",
+        "description": "   ", "transaction_date": date.today().isoformat(),
+    })
+    assert invalid_transaction.status_code == 422

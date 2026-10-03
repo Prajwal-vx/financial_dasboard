@@ -279,7 +279,7 @@
     state.metrics.monthlyExpenseNPR = Number(summary.monthly_expense);
     recalcSavings();
     const spendingByCategory = new Map();
-    const month = new Date().toISOString().slice(0, 7);
+    const month = summary.month_start.slice(0, 7);
     state.transactions.filter((tx) => tx.type === 'debit' && tx.status === 'Completed' && tx.date.startsWith(month)).forEach((tx) => {
       spendingByCategory.set(tx.category, (spendingByCategory.get(tx.category) || 0) + tx.amountNPR);
     });
@@ -349,6 +349,26 @@
     } catch (e) {
       // Storage can be unavailable in private or restricted browser contexts.
     }
+  }
+
+  function readBrowserStorage(storageName, key, fallback = '') {
+    try {
+      return window[storageName].getItem(key) ?? fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function writeBrowserStorage(storageName, key, value) {
+    try {
+      window[storageName].setItem(key, value);
+    } catch {}
+  }
+
+  function removeBrowserStorage(storageName, key) {
+    try {
+      window[storageName].removeItem(key);
+    } catch {}
   }
 
   function initialsFromName(name) {
@@ -478,7 +498,6 @@
 
   function updateKpiCards() {
     const totalOutflow = state.expenseCategories.reduce((sum, c) => sum + c.spentNPR, 0);
-    state.metrics.monthlyExpenseNPR = totalOutflow;
     recalcSavings();
 
     const netWorthEl = document.getElementById('kpi-net-worth-val');
@@ -1236,7 +1255,7 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     showToast('CSV downloaded', 'success');
   }
 
@@ -1290,7 +1309,7 @@
           method: 'POST', body: JSON.stringify(payload)
         });
         state.apiToken = session.access_token;
-        sessionStorage.setItem('finsight_session', state.apiToken);
+        writeBrowserStorage('sessionStorage', 'finsight_session', state.apiToken);
         state.user = session.user;
         await enterApp();
       } catch (error) {
@@ -1305,7 +1324,7 @@
         tickTimer = null;
       }
       apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
-      sessionStorage.removeItem('finsight_session');
+      removeBrowserStorage('sessionStorage', 'finsight_session');
       state.apiToken = '';
       showAuth();
     });
@@ -1418,7 +1437,7 @@
     function setTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       state.currentTheme = theme;
-      localStorage.setItem('self_finance_theme', theme);
+      writeBrowserStorage('localStorage', 'self_finance_theme', theme);
       if (theme === 'light') {
         moonIcon?.classList.add('hidden');
         sunIcon?.classList.remove('hidden');
@@ -1429,7 +1448,7 @@
       refreshAllCharts();
     }
 
-    setTheme(localStorage.getItem('self_finance_theme') || 'dark');
+    setTheme(readBrowserStorage('localStorage', 'self_finance_theme', 'dark'));
     themeToggleBtn?.addEventListener('click', () => {
       setTheme(state.currentTheme === 'dark' ? 'light' : 'dark');
     });
@@ -1880,13 +1899,13 @@
     setupEventListeners();
     refreshIcons();
     initFinanceBackground();
-    state.apiToken = sessionStorage.getItem('finsight_session') || '';
+    state.apiToken = readBrowserStorage('sessionStorage', 'finsight_session');
     if (state.apiToken) {
       apiRequest('/api/auth/me').then((user) => {
         state.user = user;
         return enterApp();
       }).catch(() => {
-        sessionStorage.removeItem('finsight_session');
+        removeBrowserStorage('sessionStorage', 'finsight_session');
         state.apiToken = '';
         showAuth();
       });
