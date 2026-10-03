@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinSight Login</title>
+    <style>
+      :root {
+        --bg: #061b22;
+        --panel: rgba(15, 29, 35, 0.9);
+        --panel-border: rgba(126, 180, 195, 0.25);
+        --text: #ebf5f6;
+        --muted: #9db8bf;
+        --input: #dfeaf0;
+        --primary-1: #73efdc;
+        --primary-2: #4cc9c0;
+        --error: #f8a6a6;
+        --error-bg: rgba(122, 25, 25, 0.52);
+        --shadow: rgba(0, 0, 0, 0.28);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(32, 111, 111, 0.26), transparent 28%),
+          linear-gradient(130deg, #061b22 0%, #0b1f2b 55%, #081111 100%);
+        color: var(--text);
+      }
+
+      .auth-shell {
+        width: min(100%, 500px);
+        padding: 24px;
+      }
+
+      .auth-card {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 26px;
+        box-shadow: 0 25px 60px var(--shadow);
+        padding: 28px 28px 22px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 6px;
+      }
+
+      .brand-mark {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+        display: grid;
+        place-items: center;
+        box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.22);
+      }
+
+      .brand-mark::before {
+        content: "✓";
+        font-weight: 800;
+        color: #0d2330;
+        font-size: 1.5rem;
+        transform: translateY(-1px);
+      }
+
+      .brand-label {
+        color: var(--muted);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        font-size: 0.76rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 3vw, 2.4rem);
+        line-height: 1.1;
+        margin: 10px 0 16px;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 1.05rem;
+        margin: 0 0 20px;
+      }
+
+      .form-error {
+        display: none;
+        width: 100%;
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        color: #fff1f1;
+        background: var(--error-bg);
+        border: 1px solid rgba(255, 174, 174, 0.35);
+        font-weight: 600;
+      }
+
+      .form-error.visible {
+        display: block;
+      }
+
+      .field {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid rgba(170, 190, 200, 0.25);
+        border-radius: 12px;
+        background: rgba(219, 231, 236, 0.96);
+        color: #0d1d24;
+        padding: 14px 16px;
+        font-size: 1.05rem;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: rgba(92, 197, 187, 0.9);
+        box-shadow: 0 0 0 3px rgba(116, 232, 214, 0.18);
+      }
+
+      .hint {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-top: 8px;
+        display: block;
+      }
+
+      .primary-btn {
+        width: 100%;
+        border: none;
+        border-radius: 12px;
+        padding: 15px 18px;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0d2330;
+        cursor: pointer;
+        background: linear-gradient(90deg, var(--primary-1), var(--primary-2));
+        box-shadow: 0 12px 24px rgba(70, 194, 170, 0.2);
+      }
+
+      .primary-btn:hover { filter: brightness(1.03); }
+
+      .secondary-link {
+        display: block;
+        width: 100%;
+        margin-top: 18px;
+        text-align: center;
+        background: none;
+        border: none;
+        color: var(--text);
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 8px;
+      }
+
+      @media (max-width: 520px) {
+        .auth-card { padding: 22px 18px; }
+        h1 { font-size: 2rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="auth-shell">
+      <section class="auth-card" aria-label="Login form">
+        <div class="brand" aria-label="FinSight logo">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <p class="brand-label">Financial Dashboard</p>
+        </div>
+
+        <h1>Sign in to your Dashboard</h1>
+        <p class="subtitle">Your financial records are stored in your own account.</p>
+
+        <p id="auth-error" class="form-error" role="alert"></p>
+
+        <form id="login-form">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <small class="hint">Use at least 12 characters.</small>
+          </div>
+
+          <button type="submit" class="primary-btn">Sign in</button>
+        </form>
+
+        <button id="register-link" type="button" class="secondary-link">Create a new account</button>
+      </section>
+    </main>
+
+    <script src="/login.js" defer></script>
+  </body>
+</html>

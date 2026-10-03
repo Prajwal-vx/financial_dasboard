@@ -1311,7 +1311,8 @@
   }
 
   function setupAuthListeners() {
-    let registering = false;
+    const initialRegistering = new URLSearchParams(window.location.search).get('mode') === 'register';
+    let registering = initialRegistering;
     const nameGroup = document.getElementById('auth-name-group');
     const nameInput = document.getElementById('auth-name');
     const passwordInput = document.getElementById('auth-password');
@@ -1319,16 +1320,23 @@
     const lead = document.getElementById('auth-lead');
     const submit = document.getElementById('auth-submit');
     const modeToggle = document.getElementById('auth-mode-toggle');
-    modeToggle?.addEventListener('click', () => {
-      registering = !registering;
+
+    function applyAuthMode(nextRegistering) {
+      registering = nextRegistering;
       nameGroup?.classList.toggle('hidden', !registering);
       if (nameInput) nameInput.required = registering;
       if (passwordInput) passwordInput.autocomplete = registering ? 'new-password' : 'current-password';
       if (heading) heading.textContent = registering ? 'Create your workspace' : 'Sign in to your workspace';
       if (lead) lead.textContent = registering ? 'Start with an empty, private ledger. You can add accounts and transactions next.' : 'Your financial records are stored in your own account.';
       if (submit) submit.textContent = registering ? 'Create account' : 'Sign in';
-      modeToggle.textContent = registering ? 'Already have an account? Sign in' : 'Create a new account';
+      if (modeToggle) modeToggle.textContent = registering ? 'Already have an account? Sign in' : 'Create a new account';
       setFormError('auth-error', '');
+    }
+
+    applyAuthMode(registering);
+
+    modeToggle?.addEventListener('click', () => {
+      applyAuthMode(!registering);
     });
     document.getElementById('auth-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -1944,10 +1952,18 @@
     refreshIcons();
     initFinanceBackground();
     state.apiToken = '';
-    apiRequest('/api/auth/me').then((user) => {
-      state.user = user;
+    apiRequest('/api/auth/session').then((session) => {
+      if (!session?.authenticated) {
+        state.user = null;
+        state.apiToken = '';
+        showAuth();
+        return;
+      }
+      state.user = session.user;
+      state.apiToken = '';
       return enterApp();
     }).catch(() => {
+      state.user = null;
       state.apiToken = '';
       showAuth();
     });

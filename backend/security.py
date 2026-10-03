@@ -56,11 +56,7 @@ def issue_session(db: Session, user: User) -> str:
     return token
 
 
-def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-    db: Session = Depends(get_db),
-) -> User:
+def resolve_current_user(request: Request, credentials: HTTPAuthorizationCredentials | None, db: Session) -> User:
     raw_token = None
     if credentials is not None:
         raw_token = credentials.credentials
@@ -83,3 +79,11 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is unavailable")
     return user
+
+
+def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+) -> User:
+    return resolve_current_user(request, credentials, db)

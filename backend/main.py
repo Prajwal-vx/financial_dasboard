@@ -5,11 +5,13 @@ from decimal import Decimal
 import hashlib
 from html.parser import HTMLParser
 import json
+import math
 import os
 from pathlib import Path
 import re
 from threading import Lock
 from time import monotonic
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -28,6 +30,7 @@ from backend.schemas import (
     AccountInput,
     AccountOutput,
     AuthResponse,
+    AuthSessionOutput,
     CategoryInput,
     CategoryOutput,
     LoginInput,
@@ -43,6 +46,7 @@ from backend.security import (
     get_current_user,
     hash_password,
     issue_session,
+    resolve_current_user,
     verify_password,
 )
 
@@ -110,6 +114,10 @@ class AuthRateLimiter:
 auth_rate_limiter = AuthRateLimiter()
 LIVE_MARKET_SOURCE_URL = "https://www.sharesansar.com/live-trading"
 LIVE_MARKET_LIMIT = 50
+LIVE_MARKET_CACHE_SECONDS = 30
+_market_cache_lock = Lock()
+_market_cache_assets = None
+_market_cache_expires_at = 0.0
 
 
 class _LiveMarketTableParser(HTMLParser):
@@ -150,68 +158,60 @@ class _LiveMarketTableParser(HTMLParser):
 
 def _market_number(value):
     try:
-        return float(value.replace(",", "").strip())
+        number = float(value.replace(",", "").strip())
+        return number if math.isfinite(number) else None
     except (TypeError, ValueError):
         return None
 
 
 def _fetch_live_market_assets():
-    response = httpx.get(
-        LIVE_MARKET_SOURCE_URL,
-        timeout=20,
-        headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"},
-    )
-    if response.status_code != 200:
-        raise HTTPException(status_code=503, detail="NEPSE market source unavailable")
+    global _market_cache_assets, _market_cache_expires_at
+    with _market_cache_lock:
+        now = monotonic()
+        if _market_cache_assets is not None and now < _market_cache_expires_at:
+            return _market_cache_assets
+        response = httpx.get(LIVE_MARKET_SOURCE_URL, timeout=5,
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"})
+        if response.status_code != 200:
+            raise HTTPException(status_code=503, detail="NEPSE market source unavailable")
 
-    parser = _LiveMarketTableParser()
-    parser.feed(response.text)
-    fetched_at = datetime.now(timezone.utc).isoformat()
-    source_text = " ".join(parser.page_text)
-    source_status = re.search(
-        r"As of\s*:?\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(Market Open|Market Closed)",
-        source_text,
-        re.IGNORECASE,
-    )
-    source_timestamp = source_status.group(1) if source_status else None
-    market_status = source_status.group(2).title() if source_status else "Status unavailable"
-    assets = []
-    for row in parser.rows:
-        if len(row) < 10 or row[1].strip().upper() == "SYMBOL":
-            continue
-        symbol = row[1].strip().upper()
-        price = _market_number(row[2])
-        change = _market_number(row[3])
-        change_pct = _market_number(row[4])
-        day_high = _market_number(row[6])
-        day_low = _market_number(row[7])
-        volume = _market_number(row[8])
-        if not symbol or price is None or price <= 0 or change is None or change_pct is None or volume is None:
-            continue
-        assets.append({
-            "id": symbol.lower(),
-            "symbol": symbol,
-            "name": symbol,
-            "category": "active",
-            "isIndex": False,
-            "priceNPR": round(price, 2),
-            "changePct": round(change_pct, 2),
-            "changeNPR": round(change, 2),
-            "dayLow": round(day_low if day_low is not None else price, 2),
-            "dayHigh": round(day_high if day_high is not None else price, 2),
-            "volume": int(volume),
-            "cap": "—",
-            "history": [price],
-            "fetchedAt": fetched_at,
-            "sourceTimestamp": source_timestamp,
-            "marketStatus": market_status,
-        })
-
-    assets.sort(key=lambda asset: asset["volume"], reverse=True)
-    if len(assets) < LIVE_MARKET_LIMIT:
-        raise HTTPException(status_code=503, detail="NEPSE market source returned fewer than 50 securities")
-    return assets[:LIVE_MARKET_LIMIT]
-
+        parser = _LiveMarketTableParser()
+        parser.feed(response.text)
+        fetched_at = datetime.now(timezone.utc).isoformat()
+        source_text = " ".join(parser.page_text)
+        source_status = re.search(
+            r"As of\s*: ?\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(Market Open|Market Closed)",
+            source_text, re.IGNORECASE)
+        source_timestamp = source_status.group(1) if source_status else None
+        market_status = source_status.group(2).title() if source_status else "Status unavailable"
+        assets = []
+        for row in parser.rows:
+            if len(row) < 10 or row[1].strip().upper() == "SYMBOL":
+                continue
+            symbol = row[1].strip().upper()
+            price, change = _market_number(row[2]), _market_number(row[3])
+            change_pct, day_high = _market_number(row[4]), _market_number(row[6])
+            day_low, volume = _market_number(row[7]), _market_number(row[8])
+            if (not re.fullmatch(r"[A-Z0-9.-]{1,20}", symbol) or price is None or price <= 0
+                    or change is None or change_pct is None or volume is None or volume < 0):
+                continue
+            assets.append({
+                "id": symbol.lower(), "symbol": symbol, "name": symbol,
+                "category": "active", "isIndex": False,
+                "priceNPR": round(price, 2), "changePct": round(change_pct, 2),
+                "changeNPR": round(change, 2),
+                "dayLow": round(day_low if day_low is not None else price, 2),
+                "dayHigh": round(day_high if day_high is not None else price, 2),
+                "volume": int(volume), "cap": "—", "history": [price],
+                "fetchedAt": fetched_at, "sourceTimestamp": source_timestamp,
+                "marketStatus": market_status,
+            })
+        assets.sort(key=lambda asset: asset["volume"], reverse=True)
+        if len(assets) < LIVE_MARKET_LIMIT:
+            raise HTTPException(status_code=503, detail="NEPSE market source returned fewer than 50 securities")
+        _market_cache_assets = assets[:LIVE_MARKET_LIMIT]
+        _market_cache_expires_at = monotonic() + LIVE_MARKET_CACHE_SECONDS
+        return _market_cache_assets
 
 @app.middleware("http")
 async def apply_security_controls(request: Request, call_next):
@@ -263,6 +263,16 @@ async def apply_security_controls(request: Request, call_next):
 
 @app.get("/", include_in_schema=False)
 def index():
+    return FileResponse(WORKSPACE_ROOT / "login.html")
+
+
+@app.get("/login", include_in_schema=False)
+def login_page():
+    return FileResponse(WORKSPACE_ROOT / "login.html")
+
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
     return FileResponse(WORKSPACE_ROOT / "index.html")
 
 
@@ -274,6 +284,11 @@ def styles():
 @app.get("/app.js", include_in_schema=False)
 def frontend_script():
     return FileResponse(WORKSPACE_ROOT / "app.js", media_type="text/javascript")
+
+
+@app.get("/login.js", include_in_schema=False)
+def login_script():
+    return FileResponse(WORKSPACE_ROOT / "login.js", media_type="text/javascript")
 
 
 @app.get("/api/health")
@@ -391,6 +406,18 @@ def logout(
     response = Response(status_code=204)
     response.delete_cookie(key="fin_sight_session", path="/", samesite="lax", secure=production)
     return response
+
+
+@app.get("/api/auth/session", response_model=AuthSessionOutput)
+def session_status(request: Request, db: Session = Depends(get_db)):
+    try:
+        user = resolve_current_user(request=request, credentials=None, db=db)
+    except HTTPException:
+        return AuthSessionOutput(authenticated=False, user=None)
+    return AuthSessionOutput(
+        authenticated=True,
+        user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+    )
 
 
 @app.get("/api/auth/me", response_model=UserOutput)
@@ -561,7 +588,11 @@ def summary(user: User = Depends(get_current_user), db: Session = Depends(get_db
     accounts = db.scalars(select(Account).where(Account.user_id == user.id, Account.status == "active")).all()
     balances_map = get_account_balances(db, user.id, accounts)
     balances = [AccountBalanceSummary(account_id=account.id, balance=balances_map[account.id], currency=account.currency) for account in accounts]
-    today = date.today()
+    try:
+        user_timezone = ZoneInfo(user.timezone)
+    except ZoneInfoNotFoundError:
+        user_timezone = timezone.utc
+    today = datetime.now(user_timezone).date()
     month_start = today.replace(day=1)
     if month_start.month == 12:
         next_month_start = date(month_start.year + 1, 1, 1)

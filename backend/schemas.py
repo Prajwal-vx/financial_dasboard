@@ -173,6 +173,11 @@ class AuthResponse(BaseModel):
     user: UserOutput
 
 
+class AuthSessionOutput(BaseModel):
+    authenticated: bool
+    user: UserOutput | None = None
+
+
 class AccountBalanceSummary(BaseModel):
     account_id: int
     balance: Decimal

@@ -1,4 +1,5 @@
 from datetime import date
+from datetime import datetime as DateTime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -108,6 +109,22 @@ def test_summary_counts_posted_flows_but_not_transfers_or_pending_entries():
     assert Decimal(result.json()["monthly_expense"]) == Decimal("10.00")
 
 
+def test_summary_uses_workspace_timezone_at_month_boundary(monkeypatch):
+    headers = register("timezone-summary@example.com")
+
+    class FrozenDateTime(DateTime):
+        @classmethod
+        def now(cls, tz=None):
+            instant = DateTime(2026, 10, 31, 20, 0, tzinfo=timezone.utc)
+            return instant.astimezone(tz) if tz else instant.replace(tzinfo=None)
+
+    monkeypatch.setattr(market_module, "ZoneInfo", lambda _name: timezone(timedelta(hours=5, minutes=45)))
+    monkeypatch.setattr(market_module, "datetime", FrozenDateTime)
+    response = client.get("/api/summary", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["month_start"] == "2026-11-01"
+
+
 def test_auth_endpoints_reject_excessive_requests():
     auth_rate_limiter.clear()
     for _ in range(10):
@@ -200,6 +217,25 @@ def test_auth_uses_secure_http_only_session_cookie():
     assert cookie_response.json()["email"] == "cookie@example.com"
 
 
+def test_session_status_reports_auth_state_without_raising_errors():
+    client.cookies.clear()
+    anonymous_response = client.get("/api/auth/session")
+    assert anonymous_response.status_code == 200
+    assert anonymous_response.json() == {"authenticated": False, "user": None}
+
+    headers = register("session-status@example.com")
+    login_response = client.post("/api/auth/login", headers=headers, json={
+        "email": "session-status@example.com",
+        "password": "a-secure-test-password",
+    })
+    assert login_response.status_code == 200
+    client.cookies.set("fin_sight_session", login_response.cookies.get("fin_sight_session"))
+    authed_response = client.get("/api/auth/session")
+    assert authed_response.status_code == 200
+    assert authed_response.json()["authenticated"] is True
+    assert authed_response.json()["user"]["email"] == "session-status@example.com"
+
+
 def test_auth_get_requests_fail_with_clear_method_error():
     login_response = client.get("/api/auth/login")
     assert login_response.status_code == 405
@@ -235,6 +271,8 @@ def test_opening_balance_cent_precision_and_merchant_clean():
 
 
 def test_market_snapshot_endpoint_returns_top_50_by_volume(monkeypatch):
+    market_module._market_cache_assets = None
+    market_module._market_cache_expires_at = 0
     header = """<div>As of : 2026-10-02 15:00:00 Market Closed</div>
     <table id="headFixed"><thead><tr>
         <th>S.No</th><th>Symbol</th><th>LTP</th><th>Point Change</th><th>% Change</th>
@@ -266,3 +304,33 @@ def test_market_snapshot_endpoint_returns_top_50_by_volume(monkeypatch):
     assert asset["fetchedAt"]
     assert asset["sourceTimestamp"] == "2026-10-02 15:00:00"
     assert asset["marketStatus"] == "Market Closed"
+
+
+def test_market_snapshot_is_cached_and_untrusted_symbols_are_dropped(monkeypatch):
+    market_module._market_cache_assets = None
+    market_module._market_cache_expires_at = 0
+    header = "<table id='headFixed'><tr><th>S.No</th><th>Symbol</th><th>LTP</th><th>Change</th><th>Change %</th><th>Open</th><th>High</th><th>Low</th><th>Volume</th><th>Prev</th></tr>"
+    rows = "".join(
+        f"<tr><td>{i}</td><td>{'&lt;img src=x onerror=alert(1)&gt;' if i == 0 else f'SAFE{i}'}</td>"
+        "<td>100</td><td>1</td><td>1</td><td>99</td><td>101</td><td>98</td><td>100</td><td>99</td></tr>"
+        for i in range(51)
+    )
+    calls = []
+    monkeypatch.setattr(market_module.httpx, "get", lambda *args, **kwargs: (
+        calls.append(1) or SimpleNamespace(status_code=200, text=header + rows + "</table>")
+    ))
+    first = client.get("/api/market")
+    second = client.get("/api/market")
+    assert first.status_code == second.status_code == 200
+    assert len(calls) == 1
+    assert all("<" not in asset["symbol"] for asset in first.json())
+
+
+def test_login_page_scripts_work_with_content_security_policy():
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "/login.js" in page.text
+    assert "<script>" not in page.text
+    script = client.get("/login.js")
+    assert script.status_code == 200
+    assert "X-Content-Type-Options" in script.headers
