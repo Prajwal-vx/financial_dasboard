@@ -544,16 +544,22 @@
     state.metrics.savingsRate = inc > 0 ? parseFloat((((inc - exp) / inc) * 100).toFixed(1)) : 0;
   }
 
-  function setFormError(id, msg) {
+  function setFormError(id, msg, isSuccess = false) {
     const el = document.getElementById(id);
     if (!el) return;
     if (!msg) {
       el.textContent = '';
       el.classList.add('hidden');
+      el.classList.remove('success');
       return;
     }
     el.textContent = msg;
     el.classList.remove('hidden');
+    if (isSuccess) {
+      el.classList.add('success');
+    } else {
+      el.classList.remove('success');
+    }
   }
 
   function updateKpiCards() {
@@ -1311,8 +1317,11 @@
   }
 
   function setupAuthListeners() {
-    const initialRegistering = new URLSearchParams(window.location.search).get('mode') === 'register';
-    let registering = initialRegistering;
+    // SECURITY: Removed URL-based mode detection to prevent session confusion
+    // Registration is now handled on the login page via toggle button
+    // This prevents the vulnerability where clicking "create account" would
+    // redirect to dashboard with existing session instead of showing registration form
+    let registering = false;
     const nameGroup = document.getElementById('auth-name-group');
     const nameInput = document.getElementById('auth-name');
     const passwordInput = document.getElementById('auth-password');
@@ -1351,9 +1360,20 @@
         const session = await apiRequest(registering ? '/api/auth/register' : '/api/auth/login', {
           method: 'POST', body: JSON.stringify(payload)
         });
-        state.apiToken = session.access_token;
-        state.user = session.user;
-        await enterApp();
+
+        if (registering) {
+          // SECURITY: Registration no longer auto-logs in user
+          // Show success message and switch to login mode
+          setFormError('auth-error', 'Account created successfully! Please sign in with your credentials.', true);
+          applyAuthMode(false); // Switch to login mode
+          // Clear the error after 3 seconds
+          setTimeout(() => setFormError('auth-error', ''), 3000);
+        } else {
+          // Login - proceed to app
+          state.apiToken = session.access_token;
+          state.user = session.user;
+          await enterApp();
+        }
       } catch (error) {
         setFormError('auth-error', error.message || 'Unable to sign in. Check your details and try again.');
       } finally {

@@ -267,13 +267,28 @@ def index():
 
 
 @app.get("/login", include_in_schema=False)
-def login_page():
+def login_page(request: Request, db: Session = Depends(get_db)):
+    # SECURITY: If user is already authenticated, redirect to dashboard
+    try:
+        user = resolve_current_user(request=request, credentials=None, db=db)
+        if user:
+            return FileResponse(WORKSPACE_ROOT / "index.html")
+    except HTTPException:
+        pass
     return FileResponse(WORKSPACE_ROOT / "login.html")
 
 
 @app.get("/dashboard", include_in_schema=False)
-def dashboard():
-    return FileResponse(WORKSPACE_ROOT / "index.html")
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    # SECURITY: Check if user is authenticated before serving dashboard
+    try:
+        user = resolve_current_user(request=request, credentials=None, db=db)
+        if user:
+            return FileResponse(WORKSPACE_ROOT / "index.html")
+    except HTTPException:
+        pass
+    # Not authenticated - redirect to login
+    return FileResponse(WORKSPACE_ROOT / "login.html")
 
 
 @app.get("/styles.css", include_in_schema=False)
@@ -329,28 +344,22 @@ def register(payload: RegisterInput, db: Session = Depends(get_db)):
         ]
         db.add_all([Category(user_id=user.id, name=name, type=kind) for name, kind in categories])
         db.add(Account(user_id=user.id, name="Cash", account_type="cash", currency=payload.currency.upper(), opening_balance=Decimal("0.00")))
-        token = issue_session(db, user)
+        # SECURITY: Do not auto-login after registration for better security
+        # User must explicitly log in with their credentials
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists")
+    # Return user info but no token - user must login explicitly
     response = JSONResponse(
         content=AuthResponse(
-            access_token=token,
+            access_token="",  # Empty token - user must login
             token_type="bearer",
             user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
         ).model_dump(mode="json"),
         status_code=201,
     )
-    response.set_cookie(
-        key="fin_sight_session",
-        value=token,
-        httponly=True,
-        samesite="lax",
-        secure=production,
-        path="/",
-        max_age=int(os.getenv("SESSION_TTL_HOURS", "12")) * 3600 if os.getenv("SESSION_TTL_HOURS", "12").isdigit() else 12 * 3600,
-    )
+    # Do not set session cookie - user must login explicitly
     return response
 
 

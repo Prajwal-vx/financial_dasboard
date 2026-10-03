@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Financial Command Center</title>
-  <meta name="description" content="A private financial command center for accounts, transactions, and cash flow.">
+  <title>FinSight | Financial Dashboard</title>
+  <meta name="description" content="A private financial dashboard for accounts, transactions, and cash flow.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -15,67 +15,26 @@
 
   <canvas id="finance-bg-canvas" class="finance-bg-canvas" aria-hidden="true"></canvas>
 
-  <div class="auth-screen" id="auth-screen">
-    <div class="auth-card">
-      <div class="auth-brand">
-        <div class="brand-mark" aria-label="FinSight logo">
-  <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
-    <defs>
-      <linearGradient id="auth-logo-grad" x1="0" x2="1" y1="1" y2="0">
-        <stop offset="0" stop-color="#27d69b"/>
-        <stop offset="1" stop-color="#75f2c2"/>
-      </linearGradient>
-    </defs>
-    <path d="M8 35.5 18.6 24l6.4 6.2L40 13.5" fill="none" stroke="url(#auth-logo-grad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M32.5 13.5H40V21" fill="none" stroke="#d7fff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="8" cy="35.5" r="2.5" fill="#75f2c2"/>
-  </svg>
-</div>
-        <div>
-          <p class="auth-kicker">Financial Dashboard</p>
-          <h1 class="auth-title" id="auth-heading">Sign in to your Dashboard</h1>
-        </div>
-      </div>
-      <p class="auth-lead" id="auth-lead">Your financial records are stored in your own account.</p>
-      <form id="auth-form" class="modal-form">
-        <p class="form-error hidden" id="auth-error" role="alert"></p>
-        <div class="form-group hidden" id="auth-name-group">
-          <label for="auth-name">Name</label>
-          <input type="text" id="auth-name" maxlength="100" autocomplete="name">
-        </div>
-        <div class="form-group">
-          <label for="auth-email">Email</label>
-          <input type="email" id="auth-email" required maxlength="254" autocomplete="email">
-        </div>
-        <div class="form-group">
-          <label for="auth-password">Password</label>
-          <input type="password" id="auth-password" required minlength="12" maxlength="128" autocomplete="current-password">
-          <small id="auth-password-hint" class="text-muted">Use at least 12 characters.</small>
-        </div>
-        <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Sign in</button>
-      </form>
-      <button type="button" class="link-btn auth-mode-toggle" id="auth-mode-toggle">Create a new account</button>
-    </div>
-  </div>
+  <!-- Sign-in now lives only in /login.html. app.js should redirect there when there is no valid session. -->
 
   <div class="app-layout is-locked" id="app-layout" hidden>
     <aside class="sidebar" id="sidebar" aria-label="Primary">
       <div class="sidebar-brand">
         <div class="brand-mark" aria-label="FinSight logo">
-  <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
-    <defs>
-      <linearGradient id="sidebar-logo-grad" x1="0" x2="1" y1="1" y2="0">
-        <stop offset="0" stop-color="#27d69b"/>
-        <stop offset="1" stop-color="#75f2c2"/>
-      </linearGradient>
-    </defs>
-    <path d="M8 35.5 18.6 24l6.4 6.2L40 13.5" fill="none" stroke="url(#sidebar-logo-grad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M32.5 13.5H40V21" fill="none" stroke="#d7fff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="8" cy="35.5" r="2.5" fill="#75f2c2"/>
-  </svg>
-</div>
+          <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
+            <defs>
+              <linearGradient id="sidebar-logo-grad" x1="0" x2="1" y1="1" y2="0">
+                <stop offset="0" stop-color="#27d69b"/>
+                <stop offset="1" stop-color="#75f2c2"/>
+              </linearGradient>
+            </defs>
+            <path d="M8 35.5 18.6 24l6.4 6.2L40 13.5" fill="none" stroke="url(#sidebar-logo-grad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M32.5 13.5H40V21" fill="none" stroke="#d7fff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="8" cy="35.5" r="2.5" fill="#75f2c2"/>
+          </svg>
+        </div>
         <div class="brand-info">
-          <span class="brand-name">Financial</span>
+          <span class="brand-name">FinSight</span>
           <span class="brand-badge">Ledger</span>
         </div>
       </div>
@@ -108,11 +67,12 @@
         </button>
 
         <p class="nav-section-label">Moves</p>
-        <button type="button" class="nav-item" data-view="transfer-modal-trigger" id="btn-quick-transfer-nav">
+        <!-- These two are actions, not views. app.js should bind them by data-action. -->
+        <button type="button" class="nav-item" data-action="open-transfer" id="btn-quick-transfer-nav">
           <i data-lucide="arrow-left-right" aria-hidden="true"></i>
           <span>Transfer</span>
         </button>
-        <button type="button" class="nav-item" data-view="reports" id="btn-export-statement-nav">
+        <button type="button" class="nav-item" data-action="export-csv" id="btn-export-statement-nav">
           <i data-lucide="download" aria-hidden="true"></i>
           <span>Export CSV</span>
         </button>
@@ -123,7 +83,7 @@
           <div class="health-title">Ledger status</div>
           <span class="health-score-badge" id="health-score-badge">Live</span>
         </div>
-        <div class="health-progress-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="94" id="health-progress-wrap">
+        <div class="health-progress-bg" role="progressbar" aria-label="Ledger sync" aria-valuemin="0" aria-valuemax="100" aria-valuenow="94" id="health-progress-wrap">
           <div class="health-progress-bar" id="health-progress-bar" style="width: 94%"></div>
         </div>
         <p class="health-desc">Account balances and posted activity sync from your database.</p>
@@ -142,14 +102,15 @@
     </aside>
 
     <div class="main-wrapper">
-      <p class="demo-security-notice" role="status" id="sync-status">Connected to your private ledger.</p>
+      <p class="sync-status-banner" role="status" id="sync-status">Connected to your private ledger.</p>
       <header class="topbar">
         <div class="topbar-left">
-          <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
+          <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
             <i data-lucide="menu" aria-hidden="true"></i>
           </button>
           <div class="search-box">
             <i data-lucide="search" aria-hidden="true"></i>
+            <label class="sr-only" for="global-search">Search</label>
             <input type="search" id="global-search" placeholder="Search descriptions, merchants, accounts…">
           </div>
         </div>
@@ -165,10 +126,11 @@
 
           <div class="date-badge">
             <i data-lucide="calendar" aria-hidden="true"></i>
-            <span id="current-date-display">Aug 2026</span>
+            <!-- Filled by app.js with the current month. -->
+            <span id="current-date-display">—</span>
           </div>
 
-          <button type="button" class="icon-btn theme-toggle-btn" id="theme-toggle" aria-label="Switch theme" title="Theme">
+          <button type="button" class="icon-btn theme-toggle-btn" id="theme-toggle" aria-label="Switch theme" title="Switch theme">
             <i data-lucide="moon" id="theme-icon-moon" aria-hidden="true"></i>
             <i data-lucide="sun" id="theme-icon-sun" class="hidden" aria-hidden="true"></i>
           </button>
@@ -200,7 +162,7 @@
         <section class="view-panel active" id="view-overview">
           <div class="page-title-row">
             <div>
-              <h1 class="page-title">Financial command center</h1>
+              <h1 class="page-title">Financial dashboard</h1>
               <p class="page-subtitle" id="overview-greeting">Your finances, grounded in your ledger.</p>
             </div>
             <div class="action-btn-group">
@@ -278,21 +240,21 @@
                 </div>
               </div>
               <div class="card-body chart-body">
-                <canvas id="portfolioChart" aria-label="Portfolio valuation chart"></canvas>
+                <canvas id="portfolioChart" role="img" aria-label="Ledger balance history chart"></canvas>
               </div>
             </div>
 
             <div class="card chart-card donut-chart-card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Mix</h2>
+                  <h2 class="card-title">Account mix</h2>
                   <p class="card-subtitle">Current balances across active accounts</p>
                 </div>
                 <span class="badge badge-accent">Accounts</span>
               </div>
               <div class="card-body donut-body">
                 <div class="donut-chart-container">
-                  <canvas id="assetDonutChart" aria-label="Asset allocation"></canvas>
+                  <canvas id="assetDonutChart" role="img" aria-label="Balance split across accounts"></canvas>
                   <div class="donut-center-label">
                     <span class="donut-center-title">Assets</span>
                     <span class="donut-center-val" id="donut-center-total">—</span>
@@ -359,7 +321,7 @@
           <div class="card full-width expense-breakdown-card">
             <div class="card-header">
               <div>
-                  <h2 class="card-title">Where money went</h2>
+                <h2 class="card-title">Where money went</h2>
                 <p class="card-subtitle">Click a category to filter the ledger</p>
               </div>
               <div class="badge badge-accent" id="overview-outflow-badge">Outflow —</div>
@@ -394,7 +356,7 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Caps</h2>
+                  <h2 class="card-title">Budget caps</h2>
                   <p class="card-subtitle">Five largest books</p>
                 </div>
                 <span class="badge badge-success" id="overall-budget-status">On track</span>
@@ -413,7 +375,7 @@
               <p class="page-subtitle">Inflow against living and investment outflows.</p>
             </div>
             <div class="btn-group" id="analytics-range" role="group" aria-label="Analytics range">
-              <button type="button" class="btn btn-outline active" data-range="ytd">YTD 2083</button>
+              <button type="button" class="btn btn-outline active" data-range="ytd">Year to date</button>
               <button type="button" class="btn btn-outline" data-range="t12">Trailing 12m</button>
             </div>
           </div>
@@ -421,36 +383,27 @@
             <div class="card full-width">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">In vs out</h2>
-                  <p class="card-subtitle">Last six Bikram months</p>
+                  <h2 class="card-title">Inflow vs outflow</h2>
+                  <p class="card-subtitle">Last six months</p>
                 </div>
               </div>
               <div class="card-body chart-body-lg">
-                <canvas id="cashflowChart"></canvas>
+                <canvas id="cashflowChart" role="img" aria-label="Inflow against outflow by month"></canvas>
               </div>
             </div>
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">By book</h2>
+                  <h2 class="card-title">Spending by book</h2>
                   <p class="card-subtitle">This month’s outflow mix</p>
                 </div>
               </div>
               <div class="card-body chart-body">
-                <canvas id="expenseCategoryChart"></canvas>
+                <canvas id="expenseCategoryChart" role="img" aria-label="This month's outflow by book"></canvas>
               </div>
             </div>
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Five-year sketch</h2>
-                  <p class="card-subtitle">Scenario projections are not available until a forecast model is connected.</p>
-                </div>
-              </div>
-              <div class="card-body chart-body">
-                <canvas id="projectionChart"></canvas>
-              </div>
-            </div>
+            <!-- "Five-year sketch" removed until a forecast model is connected.
+                 Restore it, and the #projectionChart code in app.js, when forecasts exist. -->
           </div>
         </section>
 
@@ -578,7 +531,7 @@
                     <th>Account</th>
                     <th>Amount</th>
                     <th>Status</th>
-                    <th></th>
+                    <th><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="full-transactions-tbody"></tbody>
@@ -662,7 +615,7 @@
           <div class="modal-icon-badge"><i data-lucide="scroll-text" aria-hidden="true"></i></div>
           <h3 class="modal-title" id="add-tx-title">New ledger entry</h3>
         </div>
-        <button type="button" class="modal-close-btn" id="btn-close-tx-modal" aria-label="Close"><i data-lucide="x"></i></button>
+        <button type="button" class="modal-close-btn" id="btn-close-tx-modal" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button>
       </div>
       <form id="add-tx-form" class="modal-form">
         <p class="form-error hidden" id="tx-form-error" role="alert"></p>
@@ -704,7 +657,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" id="btn-cancel-tx-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Post</button>
+          <button type="submit" class="btn btn-primary">Post entry</button>
         </div>
       </form>
     </div>
@@ -714,7 +667,7 @@
     <div class="modal-card">
       <div class="modal-header">
         <div class="flex-align-center gap-2"><div class="modal-icon-badge"><i data-lucide="landmark" aria-hidden="true"></i></div><h3 class="modal-title" id="add-account-title">Add account</h3></div>
-        <button type="button" class="modal-close-btn" id="btn-close-account-modal" aria-label="Close"><i data-lucide="x"></i></button>
+        <button type="button" class="modal-close-btn" id="btn-close-account-modal" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button>
       </div>
       <form id="add-account-form" class="modal-form">
         <p class="form-error hidden" id="account-form-error" role="alert"></p>
@@ -736,7 +689,7 @@
           <div class="modal-icon-badge"><i data-lucide="arrow-left-right" aria-hidden="true"></i></div>
           <h3 class="modal-title" id="transfer-title">Internal transfer</h3>
         </div>
-        <button type="button" class="modal-close-btn" id="btn-close-transfer-modal" aria-label="Close"><i data-lucide="x"></i></button>
+        <button type="button" class="modal-close-btn" id="btn-close-transfer-modal" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button>
       </div>
       <form id="transfer-form" class="modal-form">
         <p class="form-error hidden" id="transfer-form-error" role="alert"></p>
@@ -776,7 +729,7 @@
           <div class="modal-icon-badge"><i data-lucide="target" aria-hidden="true"></i></div>
           <h3 class="modal-title" id="goal-title">New milestone</h3>
         </div>
-        <button type="button" class="modal-close-btn" id="btn-close-goal-modal" aria-label="Close"><i data-lucide="x"></i></button>
+        <button type="button" class="modal-close-btn" id="btn-close-goal-modal" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button>
       </div>
       <form id="goal-form" class="modal-form">
         <p class="form-error hidden" id="goal-form-error" role="alert"></p>
@@ -800,7 +753,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" id="btn-cancel-goal-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="submit" class="btn btn-primary">Save milestone</button>
         </div>
       </form>
     </div>
@@ -808,8 +761,9 @@
 
   <div class="toast-container" id="toast-container" aria-live="polite" aria-relevant="additions"></div>
 
-  <script src="https://unpkg.com/lucide@0.468.0"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7"></script>
-  <script src="app.js"></script>
+  <!-- defer keeps the order: Lucide, then Chart.js, then app.js -->
+  <script src="https://unpkg.com/lucide@0.468.0" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7" defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>

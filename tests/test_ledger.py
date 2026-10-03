@@ -31,9 +31,15 @@ client = TestClient(app)
 
 
 def register(email="test@example.com"):
+    auth_rate_limiter.clear()  # Clear rate limiter before registration
     response = client.post("/api/auth/register", json={"name": "Test", "email": email, "password": "a-secure-test-password", "currency": "NPR"})
     assert response.status_code == 201
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+    # SECURITY: Registration no longer returns a token - user must login explicitly
+    # Now we need to login after registration
+    auth_rate_limiter.clear()  # Clear rate limiter before login
+    login_response = client.post("/api/auth/login", json={"email": email, "password": "a-secure-test-password"})
+    assert login_response.status_code == 200
+    return {"Authorization": f"Bearer {login_response.json()['access_token']}"}
 
 
 def test_account_balances_follow_ledger_and_transfer_is_neutral():
@@ -198,13 +204,19 @@ def test_auth_inputs_are_trimmed_and_normalized():
 
 
 def test_auth_uses_secure_http_only_session_cookie():
-    response = client.post("/api/auth/register", json={
+    # SECURITY: Registration no longer sets cookie - must login explicitly
+    client.post("/api/auth/register", json={
         "name": "Cookie User",
         "email": "cookie@example.com",
         "password": "a-secure-test-password",
         "currency": "NPR",
     })
-    assert response.status_code == 201
+    # Now login to get the cookie
+    response = client.post("/api/auth/login", json={
+        "email": "cookie@example.com",
+        "password": "a-secure-test-password",
+    })
+    assert response.status_code == 200
     set_cookie = response.headers.get("set-cookie", "")
     lowered_cookie = set_cookie.lower()
     assert "httponly" in lowered_cookie

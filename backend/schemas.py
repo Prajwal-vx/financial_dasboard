@@ -1,8 +1,9 @@
 from datetime import date
 from decimal import Decimal
 from typing import Literal
+import html
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, field_serializer
 
 
 class RegisterInput(BaseModel):
@@ -119,6 +120,11 @@ class AccountOutput(BaseModel):
     opening_balance: Decimal
     current_balance: Decimal
 
+    @field_serializer('name', 'institution')
+    @classmethod
+    def escape_strings(cls, value: str | None) -> str | None:
+        return html.escape(value) if value is not None else None
+
 
 class TransactionOutput(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -134,6 +140,11 @@ class TransactionOutput(BaseModel):
     transaction_date: date
     status: str
     source: str
+
+    @field_serializer('merchant', 'description')
+    @classmethod
+    def escape_strings(cls, value: str | None) -> str | None:
+        return html.escape(value) if value is not None else None
 
 
 class CategoryInput(BaseModel):
@@ -157,6 +168,11 @@ class CategoryOutput(BaseModel):
     icon: str | None = None
     color: str | None = None
     is_system: bool = False
+
+    @field_serializer('name')
+    @classmethod
+    def escape_name(cls, value: str) -> str:
+        return html.escape(value)
 
 
 class UserOutput(BaseModel):
