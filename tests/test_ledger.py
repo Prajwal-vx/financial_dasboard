@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -7,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.db import Base, get_db
+import backend.main as market_module
 from backend.main import app, auth_rate_limiter
 
 
@@ -230,3 +232,37 @@ def test_opening_balance_cent_precision_and_merchant_clean():
     })
     assert tx.status_code == 201
     assert tx.json()["merchant"] is None
+
+
+def test_market_snapshot_endpoint_returns_top_50_by_volume(monkeypatch):
+    header = """<div>As of : 2026-10-02 15:00:00 Market Closed</div>
+    <table id="headFixed"><thead><tr>
+        <th>S.No</th><th>Symbol</th><th>LTP</th><th>Point Change</th><th>% Change</th>
+        <th>Open</th><th>High</th><th>Low</th><th>Volume</th><th>Prev. Close</th>
+    </tr></thead><tbody>"""
+    rows = "".join(
+        f"<tr><td>{index + 1}</td><td>TST{index}</td><td>100.00</td><td>1.00</td>"
+        f"<td>1.00</td><td>99.00</td><td>101.00</td><td>98.00</td>"
+        f"<td>{600 - index}</td><td>99.00</td></tr>"
+        for index in range(55)
+    )
+    monkeypatch.setattr(
+        market_module.httpx,
+        "get",
+        lambda *args, **kwargs: SimpleNamespace(status_code=200, text=header + rows + "</tbody></table>"),
+    )
+    response = client.get("/api/market")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 50
+    assert payload[0]["symbol"] == "TST0"
+    assert payload[-1]["symbol"] == "TST49"
+    assert payload[0]["volume"] > payload[-1]["volume"]
+    asset = payload[0]
+    assert asset["priceNPR"] == 100.0
+    assert asset["changePct"] == 1.0
+    assert asset["category"] == "active"
+    assert asset["fetchedAt"]
+    assert asset["sourceTimestamp"] == "2026-10-02 15:00:00"
+    assert asset["marketStatus"] == "Market Closed"

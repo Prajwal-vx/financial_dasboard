@@ -3,12 +3,15 @@ from collections import deque
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import hashlib
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
+import re
 from threading import Lock
 from time import monotonic
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -105,6 +108,109 @@ class AuthRateLimiter:
 
 
 auth_rate_limiter = AuthRateLimiter()
+LIVE_MARKET_SOURCE_URL = "https://www.sharesansar.com/live-trading"
+LIVE_MARKET_LIMIT = 50
+
+
+class _LiveMarketTableParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.in_market_table = False
+        self.current_row = None
+        self.current_cell = None
+        self.rows = []
+        self.page_text = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "table" and attributes.get("id") == "headFixed":
+            self.in_market_table = True
+        elif self.in_market_table and tag == "tr":
+            self.current_row = []
+        elif self.in_market_table and tag in {"td", "th"} and self.current_row is not None:
+            self.current_cell = []
+
+    def handle_data(self, data):
+        self.page_text.append(data)
+        if self.current_cell is not None:
+            self.current_cell.append(data)
+
+    def handle_endtag(self, tag):
+        if not self.in_market_table:
+            return
+        if tag in {"td", "th"} and self.current_cell is not None:
+            self.current_row.append(" ".join("".join(self.current_cell).split()))
+            self.current_cell = None
+        elif tag == "tr" and self.current_row is not None:
+            self.rows.append(self.current_row)
+            self.current_row = None
+        elif tag == "table":
+            self.in_market_table = False
+
+
+def _market_number(value):
+    try:
+        return float(value.replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _fetch_live_market_assets():
+    response = httpx.get(
+        LIVE_MARKET_SOURCE_URL,
+        timeout=20,
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"},
+    )
+    if response.status_code != 200:
+        raise HTTPException(status_code=503, detail="NEPSE market source unavailable")
+
+    parser = _LiveMarketTableParser()
+    parser.feed(response.text)
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    source_text = " ".join(parser.page_text)
+    source_status = re.search(
+        r"As of\s*:?\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(Market Open|Market Closed)",
+        source_text,
+        re.IGNORECASE,
+    )
+    source_timestamp = source_status.group(1) if source_status else None
+    market_status = source_status.group(2).title() if source_status else "Status unavailable"
+    assets = []
+    for row in parser.rows:
+        if len(row) < 10 or row[1].strip().upper() == "SYMBOL":
+            continue
+        symbol = row[1].strip().upper()
+        price = _market_number(row[2])
+        change = _market_number(row[3])
+        change_pct = _market_number(row[4])
+        day_high = _market_number(row[6])
+        day_low = _market_number(row[7])
+        volume = _market_number(row[8])
+        if not symbol or price is None or price <= 0 or change is None or change_pct is None or volume is None:
+            continue
+        assets.append({
+            "id": symbol.lower(),
+            "symbol": symbol,
+            "name": symbol,
+            "category": "active",
+            "isIndex": False,
+            "priceNPR": round(price, 2),
+            "changePct": round(change_pct, 2),
+            "changeNPR": round(change, 2),
+            "dayLow": round(day_low if day_low is not None else price, 2),
+            "dayHigh": round(day_high if day_high is not None else price, 2),
+            "volume": int(volume),
+            "cap": "—",
+            "history": [price],
+            "fetchedAt": fetched_at,
+            "sourceTimestamp": source_timestamp,
+            "marketStatus": market_status,
+        })
+
+    assets.sort(key=lambda asset: asset["volume"], reverse=True)
+    if len(assets) < LIVE_MARKET_LIMIT:
+        raise HTTPException(status_code=503, detail="NEPSE market source returned fewer than 50 securities")
+    return assets[:LIVE_MARKET_LIMIT]
 
 
 @app.middleware("http")
@@ -173,6 +279,14 @@ def frontend_script():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/market")
+def live_market():
+    try:
+        return _fetch_live_market_assets()
+    except httpx.HTTPError as error:
+        raise HTTPException(status_code=503, detail="NEPSE market source unavailable") from error
 
 
 @app.get("/api/auth/register", include_in_schema=False)

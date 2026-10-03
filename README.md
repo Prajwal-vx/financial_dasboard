@@ -51,6 +51,7 @@ docker compose up --build
 - `GET|POST /api/transactions` with `limit`, `offset`, `start_date`, and `end_date` filters
 - `DELETE /api/transactions/{id}`
 - `GET /api/summary`
+- `GET /api/market` returns the 50 highest-volume NEPSE scrips from the [Sharesansar live-trading board](https://www.sharesansar.com/live-trading); the dashboard polls every 30 seconds while visible.
 - `GET /api/health`
 
 ## Tests

@@ -308,7 +308,7 @@
               <div class="card-header">
                 <div class="flex-align-center gap-2">
                   <h2 class="card-title">Market data</h2>
-                  <span class="live-dot" title="Sample market data"></span>
+                  <span class="live-dot" title="Market snapshot from Sharesansar"></span>
                 </div>
                 <button type="button" class="link-btn" id="btn-view-all-markets">Full board</button>
               </div>
@@ -320,7 +320,7 @@
                         <th>Scrip</th>
                         <th>LTP</th>
                         <th>Change</th>
-                        <th>7D</th>
+                        <th>Volume</th>
                       </tr>
                     </thead>
                     <tbody id="mini-market-tbody"></tbody>
@@ -458,11 +458,10 @@
           <div class="page-title-row">
             <div>
               <h1 class="page-title">NEPSE board</h1>
-              <p class="page-subtitle">No exchange feed is connected to this workspace.</p>
+              <p class="page-subtitle">Top 50 NEPSE securities by traded volume, refreshed from the public market board.</p>
             </div>
             <div class="live-feed-badge">
-              <span class="live-pulse-dot"></span>
-              <span>Demo ticks ~1.8s</span>
+              <a id="market-feed-status" href="https://www.sharesansar.com/live-trading" target="_blank" rel="noopener noreferrer">Sharesansar source · awaiting snapshot</a>
             </div>
           </div>
           <div class="market-hero-indices" id="market-hero-indices"></div>
@@ -474,13 +473,7 @@
                 <input type="search" id="market-search" placeholder="NABIL, UPPER, NTC…">
               </div>
               <div class="market-category-filters" id="market-category-filters">
-                <button type="button" class="filter-pill active" data-cat="all">All</button>
-                <button type="button" class="filter-pill" data-cat="indices">Indices</button>
-                <button type="button" class="filter-pill" data-cat="banks">Banks</button>
-                <button type="button" class="filter-pill" data-cat="hydro">Hydro</button>
-                <button type="button" class="filter-pill" data-cat="insurance">Insurance</button>
-                <button type="button" class="filter-pill" data-cat="microfinance">Microfinance</button>
-                <button type="button" class="filter-pill" data-cat="others">Others</button>
+                <span class="filter-pill active">Top 50 by volume</span>
               </div>
             </div>
             <div class="card-body p-0">
@@ -489,13 +482,13 @@
                   <thead>
                     <tr>
                       <th>Scrip</th>
-                      <th>Sector</th>
+                      <th>Rank</th>
                       <th>LTP</th>
                       <th>Pts / Rs</th>
                       <th>%</th>
                       <th>Day range</th>
-                      <th>Cap</th>
-                      <th>7D</th>
+                      <th>Volume</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody id="full-market-tbody"></tbody>

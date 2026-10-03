@@ -1,5 +1,5 @@
 /**
- * Self Finance — household ledger & NEPSE watch (demo ticks)
+ * Self Finance — household ledger & NEPSE market watch
  */
 (function () {
   'use strict';
@@ -251,9 +251,33 @@
     state.expenseCategories = [];
     state.transactions = [];
     state.goals = [];
-    state.marketAssets = DEFAULT_MARKET_ASSETS.map((a) => Object.assign({}, a, { history: a.history.slice() }));
+    state.marketAssets = [];
     state.cashflow = { ytd: { labels: [], inflow: [], outflow: [] }, t12: { labels: [], inflow: [], outflow: [] } };
     state.timeframeData = Object.fromEntries(['1W', '1M', '6M', '1Y', 'ALL'].map((key) => [key, { labels: [], values: [] }]));
+  }
+
+  async function loadMarketData() {
+    try {
+      const assets = await apiRequest('/api/market');
+      if (Array.isArray(assets) && assets.length) {
+        state.marketAssets = assets.map((asset) => ({
+          ...asset,
+          history: Array.isArray(asset.history) && asset.history.length ? asset.history.slice() : [Number(asset.priceNPR) || 0]
+        }));
+        const marketStatus = document.getElementById('market-feed-status');
+        if (marketStatus) {
+          const asset = assets[0];
+          const sourceTime = asset.sourceTimestamp ? `as of ${asset.sourceTimestamp} NPT` : 'source time unavailable';
+          const fetchedTime = asset.fetchedAt ? ` · checked ${new Date(asset.fetchedAt).toLocaleTimeString()}` : '';
+          marketStatus.textContent = `${asset.marketStatus || 'Market status unavailable'} · ${sourceTime}${fetchedTime}`;
+        }
+        renderMiniMarketTable();
+        renderFullMarketTable();
+      }
+    } catch (error) {
+      const marketStatus = document.getElementById('market-feed-status');
+      if (marketStatus) marketStatus.textContent = 'Market feed unavailable · retrying';
+    }
   }
 
   async function loadLiveLedger() {
@@ -643,10 +667,6 @@
     });
   }
 
-  function sparklineHtml(asset) {
-    return `<canvas class="sparkline-canvas" width="80" height="24" data-history='${JSON.stringify(asset.history)}' data-positive="${asset.changePct >= 0}"></canvas>`;
-  }
-
   function renderMiniMarketTable() {
     const tbody = document.getElementById('mini-market-tbody');
     if (!tbody) return;
@@ -659,7 +679,7 @@
           <td>
             <div class="ticker-cell">
               <span class="ticker-symbol">${escapeHtml(asset.symbol)}</span>
-              <span class="ticker-name">${escapeHtml(asset.name)}</span>
+              ${asset.name !== asset.symbol ? `<span class="ticker-name">${escapeHtml(asset.name)}</span>` : ''}
             </div>
           </td>
           <td class="price tabular" id="ticker-price-${asset.id}">${formatAssetPrice(asset)}</td>
@@ -668,11 +688,10 @@
               <i data-lucide="${isPositive ? 'trending-up' : 'trending-down'}"></i> ${sign}${asset.changePct.toFixed(2)}%
             </span>
           </td>
-          <td>${sparklineHtml(asset)}</td>
+          <td class="tabular">${Number(asset.volume || 0).toLocaleString('en-US')}</td>
         </tr>
       `;
     }).join('');
-    drawSparklines();
     refreshIcons(tbody);
   }
 
@@ -722,10 +741,10 @@
           <td>
             <div class="ticker-cell">
               <span class="ticker-symbol">${escapeHtml(asset.symbol)}</span>
-              <span class="ticker-name">${escapeHtml(asset.name)}</span>
+              ${asset.name !== asset.symbol ? `<span class="ticker-name">${escapeHtml(asset.name)}</span>` : ''}
             </div>
           </td>
-          <td><span class="badge badge-accent">${escapeHtml(asset.category)}</span></td>
+          <td class="tabular text-muted">${state.marketAssets.indexOf(asset) + 1}</td>
           <td class="price tabular font-bold" id="full-price-${asset.id}">${formatAssetPrice(asset)}</td>
           <td class="tabular ${isPositive ? 'positive' : 'negative'}">${formatAssetChange(asset)}</td>
           <td>
@@ -734,8 +753,7 @@
             </span>
           </td>
           <td class="tabular text-muted">${range}</td>
-          <td class="tabular">${escapeHtml(asset.cap)}</td>
-          <td>${sparklineHtml(asset)}</td>
+          <td class="tabular">${Number(asset.volume || 0).toLocaleString('en-US')}</td>
           <td>
             <button type="button" class="btn btn-sm btn-outline btn-trade" data-symbol="${escapeHtml(asset.symbol)}">Note</button>
           </td>
@@ -743,40 +761,11 @@
       `;
     }).join('');
 
-    drawSparklines();
     refreshIcons(tbody);
     tbody.querySelectorAll('.btn-trade').forEach((btn) => {
       btn.addEventListener('click', () => {
         showToast(`Demo only — no order sent for ${btn.dataset.symbol}`, 'info');
       });
-    });
-  }
-
-  function drawSparklines() {
-    document.querySelectorAll('.sparkline-canvas').forEach((canvas) => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      let data = [];
-      try { data = JSON.parse(canvas.dataset.history || '[]'); } catch (e) { data = []; }
-      const isPos = canvas.dataset.positive === 'true';
-      if (data.length < 2) return;
-      const width = canvas.width;
-      const height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
-      const min = Math.min.apply(null, data);
-      const max = Math.max.apply(null, data);
-      const range = max - min || 1;
-      ctx.beginPath();
-      ctx.strokeStyle = isPos ? PALETTE.forest : PALETTE.rose;
-      ctx.lineWidth = 1.6;
-      ctx.lineJoin = 'round';
-      data.forEach((val, i) => {
-        const x = (i / (data.length - 1)) * (width - 4) + 2;
-        const y = height - ((val - min) / range) * (height - 6) - 3;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
     });
   }
 
@@ -1265,15 +1254,9 @@
   function startLiveMarketFeed() {
     if (marketTickTimer) clearInterval(marketTickTimer);
     marketTickTimer = setInterval(() => {
-      if (document.visibilityState !== 'visible' || !state.marketAssets.length) return;
-      const count = Math.min(state.marketAssets.length, Math.floor(Math.random() * 2) + 1);
-      for (let i = 0; i < count; i++) {
-        const randIndex = Math.floor(Math.random() * state.marketAssets.length);
-        const asset = state.marketAssets[randIndex];
-        const delta = applyTick(asset);
-        patchTickerCell(asset, delta);
-      }
-    }, 1800);
+      if (document.visibilityState !== 'visible') return;
+      loadMarketData().catch(() => {});
+    }, 30000);
   }
 
   function stopLiveMarketFeed() {
@@ -1385,6 +1368,7 @@
     try {
       showApp();
       await loadLiveLedger();
+      await loadMarketData();
       refreshIcons();
       animateKpiCards();
       renderMiniMarketTable();
