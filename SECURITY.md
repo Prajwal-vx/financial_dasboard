@@ -18,7 +18,7 @@ FinSight now has an API and relational database, but this Phase 1 implementation
 ## Remaining risks and deployment gates
 
 - The in-process authentication throttle is not shared across workers or replicas. Configure distributed rate limiting at a trusted reverse proxy or gateway before public deployment.
-- Bearer tokens remain in `sessionStorage`, and JavaScript libraries are loaded from pinned CDNs. A same-origin secure-cookie migration and self-hosted, integrity-verified frontend dependencies remain advisable before handling real financial records.
+- The current app uses a same-origin, HTTP-only session cookie rather than browser storage, and JavaScript libraries are loaded from pinned CDNs. Self-hosted, integrity-verified frontend dependencies remain advisable before handling real financial records.
 - Account recovery, email verification, and multi-factor authentication are not implemented.
 - HTTPS/TLS, secret management, backups, and restore verification must be provided by deployment infrastructure. HSTS is emitted only when `APP_ENV=production`.
 - The application currently creates tables with SQLAlchemy metadata on startup; reviewed Alembic migrations are required before production schema changes.

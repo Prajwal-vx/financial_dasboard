@@ -16,10 +16,25 @@ class RegisterInput(BaseModel):
     def trim_name(cls, value: str) -> str:
         return value.strip() if isinstance(value, str) else value
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        return value.strip().upper() if isinstance(value, str) else value
+
 
 class LoginInput(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower() if isinstance(value, str) else value
 
 
 class AccountInput(BaseModel):
@@ -33,6 +48,11 @@ class AccountInput(BaseModel):
     @classmethod
     def trim_name(cls, value: str) -> str:
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        return value.strip().upper() if isinstance(value, str) else value
 
     @field_validator("institution", mode="before")
     @classmethod
@@ -62,6 +82,11 @@ class TransactionInput(BaseModel):
     transaction_date: date
     status: Literal["posted", "pending"] = "posted"
     source: Literal["manual", "import"] = "manual"
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        return value.strip().upper() if isinstance(value, str) else value
 
     @field_validator("description", mode="before")
     @classmethod
@@ -160,4 +185,4 @@ class SummaryOutput(BaseModel):
     monthly_income: Decimal
     monthly_expense: Decimal
     month_start: str
-    as_of: str
+    as_of: str

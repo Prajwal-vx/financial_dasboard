@@ -158,6 +158,56 @@ def test_invalid_date_range_and_negative_transaction_id():
     assert response.status_code == 404
 
 
+def test_auth_inputs_are_trimmed_and_normalized():
+    response = client.post("/api/auth/register", json={
+        "name": "  Jane Doe  ",
+        "email": "  JANE@EXAMPLE.COM  ",
+        "password": "a-secure-test-password",
+        "currency": " npr ",
+    })
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["user"]["email"] == "jane@example.com"
+    assert payload["user"]["currency"] == "NPR"
+
+    login = client.post("/api/auth/login", json={
+        "email": "  jane@example.com  ",
+        "password": "a-secure-test-password",
+    })
+    assert login.status_code == 200
+    assert login.json()["user"]["email"] == "jane@example.com"
+
+
+def test_auth_uses_secure_http_only_session_cookie():
+    response = client.post("/api/auth/register", json={
+        "name": "Cookie User",
+        "email": "cookie@example.com",
+        "password": "a-secure-test-password",
+        "currency": "NPR",
+    })
+    assert response.status_code == 201
+    set_cookie = response.headers.get("set-cookie", "")
+    lowered_cookie = set_cookie.lower()
+    assert "httponly" in lowered_cookie
+    assert "samesite=lax" in lowered_cookie
+    assert "fin_sight_session=" in lowered_cookie
+
+    client.cookies.set("fin_sight_session", response.json()["access_token"])
+    cookie_response = client.get("/api/auth/me")
+    assert cookie_response.status_code == 200
+    assert cookie_response.json()["email"] == "cookie@example.com"
+
+
+def test_auth_get_requests_fail_with_clear_method_error():
+    login_response = client.get("/api/auth/login")
+    assert login_response.status_code == 405
+    assert login_response.json()["detail"] == "Use POST to sign in"
+
+    register_response = client.get("/api/auth/register")
+    assert register_response.status_code == 405
+    assert register_response.json()["detail"] == "Use POST to create an account"
+
+
 def test_opening_balance_cent_precision_and_merchant_clean():
     headers = register("precision-test@example.com")
     # Opening balance with more than 2 decimal places is rejected

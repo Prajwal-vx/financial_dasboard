@@ -9,7 +9,7 @@ from pathlib import Path
 from threading import Lock
 from time import monotonic
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
@@ -175,9 +175,19 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/auth/register", include_in_schema=False)
+def register_get():
+    raise HTTPException(status_code=405, detail="Use POST to create an account")
+
+
 @app.post("/api/auth/register", response_model=AuthResponse, status_code=201)
 def register(payload: RegisterInput, db: Session = Depends(get_db)):
-    user = User(name=payload.name.strip(), email=payload.email.lower(), password_hash=hash_password(payload.password), currency=payload.currency)
+    user = User(
+        name=payload.name.strip(),
+        email=payload.email.strip().lower(),
+        password_hash=hash_password(payload.password),
+        currency=payload.currency.upper(),
+    )
     db.add(user)
     try:
         db.flush()
@@ -189,47 +199,84 @@ def register(payload: RegisterInput, db: Session = Depends(get_db)):
             ("Entertainment & Travel", "expense"), ("Family & Festivals", "expense"),
         ]
         db.add_all([Category(user_id=user.id, name=name, type=kind) for name, kind in categories])
-        db.add(Account(user_id=user.id, name="Cash", account_type="cash", currency=payload.currency, opening_balance=Decimal("0.00")))
+        db.add(Account(user_id=user.id, name="Cash", account_type="cash", currency=payload.currency.upper(), opening_balance=Decimal("0.00")))
         token = issue_session(db, user)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists")
-    return AuthResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+    response = JSONResponse(
+        content=AuthResponse(
+            access_token=token,
+            token_type="bearer",
+            user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+        ).model_dump(mode="json"),
+        status_code=201,
     )
+    response.set_cookie(
+        key="fin_sight_session",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=production,
+        path="/",
+        max_age=int(os.getenv("SESSION_TTL_HOURS", "12")) * 3600 if os.getenv("SESSION_TTL_HOURS", "12").isdigit() else 12 * 3600,
+    )
+    return response
+
+
+@app.get("/api/auth/login", include_in_schema=False)
+def login_get():
+    raise HTTPException(status_code=405, detail="Use POST to sign in")
 
 
 @app.post("/api/auth/login", response_model=AuthResponse)
 def login(payload: LoginInput, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == payload.email.lower()))
+    user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
     password_ok = verify_password(payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH)
     if user is None or not password_ok:
         raise HTTPException(status_code=401, detail="Email or password is incorrect")
     token = issue_session(db, user)
     db.commit()
-    return AuthResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+    response = JSONResponse(
+        content=AuthResponse(
+            access_token=token,
+            token_type="bearer",
+            user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+        ).model_dump(mode="json"),
     )
+    response.set_cookie(
+        key="fin_sight_session",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=production,
+        path="/",
+        max_age=int(os.getenv("SESSION_TTL_HOURS", "12")) * 3600 if os.getenv("SESSION_TTL_HOURS", "12").isdigit() else 12 * 3600,
+    )
+    return response
 
 
 @app.post("/api/auth/logout", status_code=204)
 def logout(
+    request: Request,
     user: User = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ):
-    if credentials is None:
-        return
-    token_hash = hashlib.sha256(credentials.credentials.encode()).hexdigest()
+    raw_token = credentials.credentials if credentials is not None else request.cookies.get("fin_sight_session")
+    if raw_token is None:
+        response = Response(status_code=204)
+        response.delete_cookie(key="fin_sight_session", path="/", samesite="lax", secure=production)
+        return response
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     session = db.scalar(select(SessionToken).where(SessionToken.user_id == user.id, SessionToken.token_hash == token_hash))
     if session:
         db.delete(session)
         db.commit()
+    response = Response(status_code=204)
+    response.delete_cookie(key="fin_sight_session", path="/", samesite="lax", secure=production)
+    return response
 
 
 @app.get("/api/auth/me", response_model=UserOutput)
@@ -425,4 +472,4 @@ def summary(user: User = Depends(get_current_user), db: Session = Depends(get_db
         monthly_expense=monthly.get("expense", Decimal("0.00")),
         month_start=month_start.isoformat(),
         as_of=datetime.now(timezone.utc).isoformat(),
-    )
+    )

@@ -4,7 +4,7 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from backend.db import get_db
 from backend.models import SessionToken, User
 
-
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "fin_sight_session")
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -57,12 +57,17 @@ def issue_session(db: Session, user: User) -> str:
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    if credentials is None:
+    raw_token = None
+    if credentials is not None:
+        raw_token = credentials.credentials
+    else:
+        raw_token = request.cookies.get(SESSION_COOKIE_NAME)
+    if raw_token is None or not raw_token.strip():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sign in to access financial records")
-    raw_token = credentials.credentials
     if len(raw_token) > 256:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired; sign in again")
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
@@ -77,4 +82,4 @@ def get_current_user(
     user = db.get(User, session.user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is unavailable")
-    return user
+    return user

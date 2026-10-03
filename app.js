@@ -233,7 +233,7 @@
   let marketTickTimer = null;
 
   function apiRequest(path, options) {
-    const requestOptions = options || {};
+    const requestOptions = Object.assign({ credentials: 'same-origin' }, options || {});
     const headers = Object.assign({ 'Content-Type': 'application/json' }, requestOptions.headers || {});
     if (state.apiToken) headers.Authorization = `Bearer ${state.apiToken}`;
     return fetch(path, Object.assign({}, requestOptions, { headers })).then(async (response) => {
@@ -1361,7 +1361,6 @@
           method: 'POST', body: JSON.stringify(payload)
         });
         state.apiToken = session.access_token;
-        writeBrowserStorage('sessionStorage', 'finsight_session', state.apiToken);
         state.user = session.user;
         await enterApp();
       } catch (error) {
@@ -1377,7 +1376,6 @@
       }
       stopLiveMarketFeed();
       apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
-      removeBrowserStorage('sessionStorage', 'finsight_session');
       state.apiToken = '';
       showAuth();
     });
@@ -1385,6 +1383,7 @@
 
   async function enterApp() {
     try {
+      showApp();
       await loadLiveLedger();
       refreshIcons();
       animateKpiCards();
@@ -1960,19 +1959,14 @@
     setupEventListeners();
     refreshIcons();
     initFinanceBackground();
-    state.apiToken = readBrowserStorage('sessionStorage', 'finsight_session');
-    if (state.apiToken) {
-      apiRequest('/api/auth/me').then((user) => {
-        state.user = user;
-        return enterApp();
-      }).catch(() => {
-        removeBrowserStorage('sessionStorage', 'finsight_session');
-        state.apiToken = '';
-        showAuth();
-      });
-    } else {
+    state.apiToken = '';
+    apiRequest('/api/auth/me').then((user) => {
+      state.user = user;
+      return enterApp();
+    }).catch(() => {
+      state.apiToken = '';
       showAuth();
-    }
+    });
   }
 
   if (document.readyState === 'loading') {

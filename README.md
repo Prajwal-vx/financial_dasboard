@@ -18,6 +18,8 @@ python -m uvicorn backend.main:app --reload
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The local database is created as `finsight.db`. Create an account in the sign-in screen; a zero-balance Cash account and starter categories are created for that user. API documentation is at `/docs`.
 
+The API issues a same-origin, HTTP-only session cookie after login or registration and reuses it automatically for subsequent requests. Browser storage is not used for the active session token.
+
 For PostgreSQL, set `DATABASE_URL` before starting the API, for example:
 
 ```powershell
@@ -39,7 +41,7 @@ docker compose up --build
 - Monetary request values use decimal strings and are limited to two decimal places.
 - Deleting a transaction soft-deletes it and records an audit event; current balances and visible history recalculate from active records.
 - All account and transaction queries are scoped to the authenticated user. The API returns 404 when a record belongs to another user.
-- The frontend keeps the bearer session in `sessionStorage` and revalidates it with the API on page load.
+- The frontend relies on a same-origin HTTP-only session cookie and revalidates it with the API on page load.
 
 ## API
 
