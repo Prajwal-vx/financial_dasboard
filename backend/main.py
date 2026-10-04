@@ -42,11 +42,13 @@ from backend.schemas import (
 )
 from backend.security import (
     DUMMY_PASSWORD_HASH,
+    SESSION_COOKIE_NAME,
     bearer,
     get_current_user,
     hash_password,
     issue_session,
     resolve_current_user,
+    session_ttl_hours,
     verify_password,
 )
 
@@ -296,6 +298,11 @@ def styles():
     return FileResponse(WORKSPACE_ROOT / "styles.css", media_type="text/css")
 
 
+@app.get("/logo.svg", include_in_schema=False)
+def logo():
+    return FileResponse(WORKSPACE_ROOT / "logo.svg", media_type="image/svg+xml")
+
+
 @app.get("/app.js", include_in_schema=False)
 def frontend_script():
     return FileResponse(WORKSPACE_ROOT / "app.js", media_type="text/javascript")
@@ -384,13 +391,13 @@ def login(payload: LoginInput, db: Session = Depends(get_db)):
         ).model_dump(mode="json"),
     )
     response.set_cookie(
-        key="fin_sight_session",
+        key=SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
         secure=production,
         path="/",
-        max_age=int(os.getenv("SESSION_TTL_HOURS", "12")) * 3600 if os.getenv("SESSION_TTL_HOURS", "12").isdigit() else 12 * 3600,
+        max_age=session_ttl_hours() * 3600,
     )
     return response
 
@@ -402,10 +409,10 @@ def logout(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ):
-    raw_token = credentials.credentials if credentials is not None else request.cookies.get("fin_sight_session")
+    raw_token = credentials.credentials if credentials is not None else request.cookies.get(SESSION_COOKIE_NAME)
     if raw_token is None:
         response = Response(status_code=204)
-        response.delete_cookie(key="fin_sight_session", path="/", samesite="lax", secure=production)
+        response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=production)
         return response
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     session = db.scalar(select(SessionToken).where(SessionToken.user_id == user.id, SessionToken.token_hash == token_hash))
@@ -413,7 +420,7 @@ def logout(
         db.delete(session)
         db.commit()
     response = Response(status_code=204)
-    response.delete_cookie(key="fin_sight_session", path="/", samesite="lax", secure=production)
+    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=production)
     return response
 
 

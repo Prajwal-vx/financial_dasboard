@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FinSight Login</title>
+    <title>Finance Login</title>
     <style>
       :root {
         --bg: #061b22;
@@ -12,8 +12,8 @@
         --text: #ebf5f6;
         --muted: #9db8bf;
         --input: #dfeaf0;
-        --primary-1: #73efdc;
-        --primary-2: #4cc9c0;
+        --primary-1: #ffe08a;
+        --primary-2: #e49a2b;
         --error: #f8a6a6;
         --error-bg: rgba(122, 25, 25, 0.52);
         --shadow: rgba(0, 0, 0, 0.28);
@@ -53,22 +53,11 @@
         margin-bottom: 6px;
       }
 
-      .brand-mark {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
-        display: grid;
-        place-items: center;
-        box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.22);
-      }
-
-      .brand-mark::before {
-        content: "✓";
-        font-weight: 800;
-        color: #0d2330;
-        font-size: 1.5rem;
-        transform: translateY(-1px);
+      .brand-logo {
+        display: block;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
       }
 
       .brand-label {
@@ -185,8 +174,8 @@
     <main class="auth-shell">
       <section class="auth-card" aria-label="Login form">
         <div class="brand" aria-label="FinSight logo">
-          <div class="brand-mark" aria-hidden="true"></div>
-          <p class="brand-label">Financial Dashboard</p>
+          <img class="brand-logo" src="/logo.svg" alt="">
+          <p class="brand-label">Finance Ledger</p>
         </div>
 
         <h1 id="auth-heading">Sign in to your Dashboard</h1>

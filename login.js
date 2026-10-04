@@ -95,8 +95,8 @@ form?.addEventListener('submit', async (event) => {
 
     if (isRegistering) {
       // Registration successful - show success and switch to login
-      showError('Account created successfully! Please sign in with your credentials.', true);
       toggleAuthMode(); // Switch back to login mode
+      showError('Account created successfully! Please sign in with your credentials.', true);
       setTimeout(clearError, 3000);
     } else {
       // Login successful - redirect to dashboard

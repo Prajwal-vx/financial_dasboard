@@ -1,13 +1,13 @@
 # Security status
 
-FinSight has undergone a comprehensive security audit with attack simulation. The application demonstrates strong security fundamentals and is production-ready with recommended improvements for public deployment.
+FinSight has undergone a security audit with attack simulation. The application has strong security fundamentals, but it is not ready for real financial data on a public deployment until the deployment gates below are complete.
 
 ## Security Audit Summary
 
 **Audit Date:** October 3, 2026  
 **Overall Status:** ✅ PASS with Improvements Recommended  
 **Vulnerabilities Found:** 3 (all fixed)  
-**Security Tests:** 36 automated tests (18 existing + 18 new security tests)
+**Security Tests:** 40 automated tests, verified October 2026
 
 See [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md) for complete audit details.
 
@@ -54,7 +54,7 @@ See [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md) for complete audit de
 - ✅ Audit logging for all mutations
 
 ### API Security
-- ✅ Authentication required on all /api/* endpoints (except auth)
+- ✅ Authentication required on private ledger endpoints; market data and health checks are public
 - ✅ Bearer token and cookie support
 - ✅ HTTP method enforcement (GET returns 405 on login/register)
 - ✅ Security headers on all responses
@@ -146,7 +146,7 @@ python -m pytest tests/test_security_attacks.py -v
 python -m pytest tests/ -v
 ```
 
-**Current Test Status:** 36/36 passing ✅
+**Current Test Status:** 40/40 passing ✅
 
 ## Compliance Status
 

@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend.db import Base, get_db
 import backend.main as market_module
+import backend.security as security_module
 from backend.main import app, auth_rate_limiter
 
 
@@ -229,6 +230,38 @@ def test_auth_uses_secure_http_only_session_cookie():
     assert cookie_response.json()["email"] == "cookie@example.com"
 
 
+def test_login_cookie_uses_configured_name_and_positive_session_ttl(monkeypatch):
+    auth_rate_limiter.clear()
+    client.cookies.clear()
+    cookie_name = "finsight_test_session"
+    monkeypatch.setattr(market_module, "SESSION_COOKIE_NAME", cookie_name)
+    monkeypatch.setattr(security_module, "SESSION_COOKIE_NAME", cookie_name)
+    monkeypatch.setenv("SESSION_TTL_HOURS", "0")
+
+    registration = client.post("/api/auth/register", json={
+        "name": "Cookie Config",
+        "email": "cookie-config@example.com",
+        "password": "a-secure-test-password",
+    })
+    assert registration.status_code == 201
+    response = client.post("/api/auth/login", json={
+        "email": "cookie-config@example.com",
+        "password": "a-secure-test-password",
+    })
+
+    assert response.status_code == 200
+    set_cookie = response.headers["set-cookie"].lower()
+    assert f"{cookie_name}=" in set_cookie
+    assert "max-age=43200" in set_cookie
+    assert client.get("/api/auth/me").status_code == 200
+
+    token = response.json()["access_token"]
+    logout = client.post("/api/auth/logout")
+    assert logout.status_code == 204
+    assert f"{cookie_name}=" in logout.headers["set-cookie"].lower()
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+
 def test_session_status_reports_auth_state_without_raising_errors():
     client.cookies.clear()
     anonymous_response = client.get("/api/auth/session")
@@ -346,3 +379,10 @@ def test_login_page_scripts_work_with_content_security_policy():
     script = client.get("/login.js")
     assert script.status_code == 200
     assert "X-Content-Type-Options" in script.headers
+
+
+def test_shared_logo_is_served_as_svg():
+    response = client.get("/logo.svg")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert "<svg" in response.text

@@ -5,14 +5,14 @@
   'use strict';
 
   const PALETTE = {
-    brass: '#f2bd43',
-    forest: '#48d98a',
-    ink: '#25c6d9',
-    amber: '#f2bd43',
-    plum: '#a58af5',
+    brass: '#e49a2b',
+    forest: '#4cc9c0',
+    ink: '#73b8bd',
+    amber: '#e49a2b',
+    plum: '#337e82',
     rose: '#f07883',
-    teal: '#25c6d9',
-    blush: '#ea78bb'
+    teal: '#73b8bd',
+    blush: '#73b8bd'
   };
 
   const DEFAULT_MARKET_ASSETS = [
@@ -239,7 +239,9 @@
     return fetch(path, Object.assign({}, requestOptions, { headers })).then(async (response) => {
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.detail || `Request failed (${response.status})`);
+        const error = new Error(body.detail || `Request failed (${response.status})`);
+        error.status = response.status;
+        throw error;
       }
       return response.status === 204 ? null : response.json();
     });
@@ -472,12 +474,17 @@
   function showAuth() {
     const auth = document.getElementById('auth-screen');
     const app = document.getElementById('app-layout');
+    state.user = null;
+    state.apiToken = '';
+    if (!auth) {
+      window.location.replace('/login');
+      return;
+    }
     if (auth) auth.hidden = false;
     if (app) {
       app.hidden = true;
       app.classList.add('is-locked');
     }
-    state.user = null;
     applyUserToUi();
   }
 
@@ -955,13 +962,14 @@
 
   function getThemeColors() {
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const theme = getComputedStyle(document.documentElement);
     return {
-      textColor: isDark ? '#8f8578' : '#7a7166',
-      gridColor: isDark ? 'rgba(244,239,230,0.06)' : 'rgba(28,25,22,0.06)',
-      cardBg: isDark ? '#211c17' : '#fbf7f0',
-      tooltipBg: isDark ? '#2a241d' : '#fffdf8',
-      tooltipText: isDark ? '#f4efe6' : '#1c1916',
-      borderColor: isDark ? '#3a342c' : '#ddd2c0'
+      textColor: theme.getPropertyValue('--text-secondary').trim(),
+      gridColor: isDark ? 'rgba(126,180,195,0.12)' : 'rgba(16,43,50,0.1)',
+      cardBg: theme.getPropertyValue('--bg-surface-elevated').trim(),
+      tooltipBg: theme.getPropertyValue('--bg-surface').trim(),
+      tooltipText: theme.getPropertyValue('--text-primary').trim(),
+      borderColor: theme.getPropertyValue('--border-medium').trim()
     };
   }
 
@@ -1380,13 +1388,20 @@
         submit.disabled = false;
       }
     });
-    document.getElementById('btn-logout')?.addEventListener('click', () => {
+    document.getElementById('btn-logout')?.addEventListener('click', async () => {
+      try {
+        await apiRequest('/api/auth/logout', { method: 'POST' });
+      } catch (error) {
+        if (error.status !== 401) {
+          showToast('Sign out could not be confirmed. Check your connection and retry.', 'warning');
+          return;
+        }
+      }
       if (tickTimer) {
         clearInterval(tickTimer);
         tickTimer = null;
       }
       stopLiveMarketFeed();
-      apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => {});
       state.apiToken = '';
       showAuth();
     });
@@ -1808,10 +1823,10 @@
           r: Math.random() * 1.8 + 0.5,
           alpha: Math.random() * 0.4 + 0.1,
           color: Math.random() > 0.6
-            ? 'rgba(39, 214, 155,'
+            ? 'rgba(76, 201, 192,'
             : Math.random() > 0.5
-              ? 'rgba(228, 185, 105,'
-              : 'rgba(73, 185, 232,'
+              ? 'rgba(228, 154, 43,'
+              : 'rgba(115, 184, 189,'
         });
       }
     }
@@ -1830,7 +1845,7 @@
     function drawGrid(time) {
       if (!isDark()) return;
       const alpha = 0.03 + Math.sin(time * 0.0005) * 0.01;
-      ctx.strokeStyle = `rgba(117, 242, 194, ${alpha})`;
+      ctx.strokeStyle = `rgba(115, 239, 220, ${alpha})`;
       ctx.lineWidth = 0.5;
       gridLines.forEach((line) => {
         ctx.beginPath();
@@ -1846,8 +1861,8 @@
       const cy = h * 0.15 + Math.cos(time * 0.0004) * 40;
       const r = 300 + Math.sin(time * 0.0006) * 60;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0, 'rgba(39, 214, 155, 0.06)');
-      grad.addColorStop(0.5, 'rgba(39, 214, 155, 0.02)');
+      grad.addColorStop(0, 'rgba(76, 201, 192, 0.06)');
+      grad.addColorStop(0.5, 'rgba(76, 201, 192, 0.02)');
       grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
@@ -1856,8 +1871,8 @@
       const cy2 = h * 0.8 + Math.sin(time * 0.0003) * 50;
       const r2 = 250 + Math.cos(time * 0.0005) * 50;
       const grad2 = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, r2);
-      grad2.addColorStop(0, 'rgba(73, 185, 232, 0.04)');
-      grad2.addColorStop(0.6, 'rgba(73, 185, 232, 0.01)');
+      grad2.addColorStop(0, 'rgba(228, 154, 43, 0.04)');
+      grad2.addColorStop(0.6, 'rgba(228, 154, 43, 0.01)');
       grad2.addColorStop(1, 'transparent');
       ctx.fillStyle = grad2;
       ctx.fillRect(0, 0, w, h);
@@ -1891,7 +1906,7 @@
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(117, 242, 194, ${alpha})`;
+            ctx.strokeStyle = `rgba(115, 239, 220, ${alpha})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }

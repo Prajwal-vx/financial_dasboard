@@ -1,38 +1,38 @@
 /* Self Finance — finance dashboard */
 
 :root {
-  --finance-navy: #171d2b;
-  --finance-navy-deep: #0b0f18;
-  --finance-panel: #151c2b;
-  --finance-mint: #48d98a;
-  --finance-mint-bright: #62e8a7;
-  --finance-cyan: #25c6d9;
-  --finance-gold: #f2bd43;
+  --finance-navy: #0b1f2b;
+  --finance-navy-deep: #061b22;
+  --finance-panel: #0f1d23;
+  --finance-mint: #4cc9c0;
+  --finance-mint-bright: #73efdc;
+  --finance-cyan: #73b8bd;
+  --finance-gold: #e49a2b;
 
   --bg-app: var(--finance-navy-deep);
-  --bg-sidebar: #0d121d;
+  --bg-sidebar: #081a20;
   --bg-surface: var(--finance-panel);
-  --bg-surface-elevated: #1b2435;
-  --bg-surface-subtle: rgba(154, 177, 213, 0.06);
-  --bg-surface-hover: rgba(154, 177, 213, 0.09);
+  --bg-surface-elevated: #142831;
+  --bg-surface-subtle: rgba(126, 180, 195, 0.07);
+  --bg-surface-hover: rgba(126, 180, 195, 0.11);
 
-  --border-subtle: #252e40;
-  --border-medium: #39465d;
+  --border-subtle: rgba(126, 180, 195, 0.2);
+  --border-medium: rgba(126, 180, 195, 0.32);
   --border-focus: var(--finance-mint);
 
-  --text-primary: #f1f4fa;
-  --text-secondary: #a0abc0;
-  --text-muted: #707d94;
-  --text-inverse: #04111c;
+  --text-primary: #ebf5f6;
+  --text-secondary: #b2c9ce;
+  --text-muted: #86a3aa;
+  --text-inverse: #0d2330;
 
   --color-forest: var(--finance-mint);
-  --color-forest-subtle: rgba(39, 214, 155, 0.14);
+  --color-forest-subtle: rgba(76, 201, 192, 0.14);
   --color-loss: #f07883;
   --color-loss-subtle: rgba(212, 83, 62, 0.16);
   --color-brass: var(--finance-gold);
-  --color-brass-subtle: rgba(228, 185, 105, 0.15);
-  --color-ink: #a58af5;
-  --color-ink-subtle: rgba(73, 185, 232, 0.14);
+  --color-brass-subtle: rgba(228, 154, 43, 0.16);
+  --color-ink: #73b8bd;
+  --color-ink-subtle: rgba(115, 184, 189, 0.14);
 
   --color-emerald: var(--color-forest);
   --color-emerald-subtle: var(--color-forest-subtle);
@@ -41,14 +41,14 @@
   --color-indigo: var(--color-ink);
   --color-indigo-subtle: var(--color-ink-subtle);
   --color-cyan: var(--finance-cyan);
-  --color-cyan-subtle: rgba(106, 158, 139, 0.14);
-  --color-amber: #c9893a;
-  --color-amber-subtle: rgba(201, 137, 58, 0.16);
+  --color-cyan-subtle: rgba(115, 184, 189, 0.14);
+  --color-amber: #e49a2b;
+  --color-amber-subtle: rgba(228, 154, 43, 0.16);
   --color-blue: var(--color-brass);
 
   --palette-1: var(--finance-cyan);
   --palette-2: var(--finance-mint);
-  --palette-3: #a58af5;
+  --palette-3: #73b8bd;
   --palette-4: var(--finance-gold);
   --palette-5: #f07883;
 
@@ -74,30 +74,30 @@
 }
 
 [data-theme="light"] {
-  --bg-app: #e8f0f4;
-  --bg-sidebar: rgba(220, 235, 240, 0.96);
-  --bg-surface: rgba(240, 248, 252, 0.92);
-  --bg-surface-elevated: #f0f8fc;
+  --bg-app: #e7f0f1;
+  --bg-sidebar: rgba(222, 238, 239, 0.97);
+  --bg-surface: rgba(242, 248, 247, 0.96);
+  --bg-surface-elevated: #f2f8f7;
   --bg-surface-subtle: rgba(4, 17, 28, 0.04);
   --bg-surface-hover: rgba(4, 17, 28, 0.06);
 
   --border-subtle: rgba(4, 17, 28, 0.12);
   --border-medium: rgba(4, 17, 28, 0.2);
-  --border-focus: #1a8a60;
+  --border-focus: #258f84;
 
-  --text-primary: #0a1f2e;
-  --text-secondary: #3a5a6a;
-  --text-muted: #6a8a96;
-  --text-inverse: #f0f8fc;
+  --text-primary: #102b32;
+  --text-secondary: #3f6268;
+  --text-muted: #66858a;
+  --text-inverse: #f2f8f7;
 
   --color-forest: #1a8a60;
   --color-forest-subtle: rgba(26, 138, 96, 0.12);
   --color-loss: #b42318;
   --color-loss-subtle: rgba(180, 35, 24, 0.1);
-  --color-brass: #9a6418;
-  --color-brass-subtle: rgba(154, 100, 24, 0.12);
-  --color-ink: #2a7aaa;
-  --color-ink-subtle: rgba(42, 122, 170, 0.1);
+  --color-brass: #a9650c;
+  --color-brass-subtle: rgba(169, 101, 12, 0.12);
+  --color-ink: #337e82;
+  --color-ink-subtle: rgba(51, 126, 130, 0.1);
 
   --color-emerald: var(--color-forest);
   --color-emerald-subtle: var(--color-forest-subtle);
@@ -105,10 +105,10 @@
   --color-rose-subtle: var(--color-loss-subtle);
   --color-indigo: var(--color-ink);
   --color-indigo-subtle: var(--color-ink-subtle);
-  --color-cyan: #2f6f5e;
-  --color-cyan-subtle: rgba(47, 111, 94, 0.12);
-  --color-amber: #9a6418;
-  --color-amber-subtle: rgba(154, 100, 24, 0.12);
+  --color-cyan: #337e82;
+  --color-cyan-subtle: rgba(51, 126, 130, 0.12);
+  --color-amber: #a9650c;
+  --color-amber-subtle: rgba(169, 101, 12, 0.12);
   --color-blue: var(--color-brass);
 
   --shadow-sm: 0 1px 0 rgba(4, 17, 28, 0.06);
@@ -138,7 +138,7 @@
   pointer-events: none;
 }
 
-.brand-mark svg {
+.brand-mark img {
   display: block;
   width: 26px;
   height: 26px;
@@ -630,9 +630,9 @@ a { color: inherit; text-decoration: none; }
 }
 .btn i { width: 16px; height: 16px; }
 .btn-primary {
-  background: var(--color-forest);
-  color: #f4efe6;
-  box-shadow: 0 8px 18px rgba(39, 214, 155, 0.2);
+  background: var(--color-brass);
+  color: #0d2330;
+  box-shadow: 0 8px 18px rgba(228, 154, 43, 0.2);
 }
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-secondary, .btn-outline {
@@ -1455,7 +1455,7 @@ a { color: inherit; text-decoration: none; }
   transform: scale(1.05);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
               0 12px 24px rgba(0, 0, 0, 0.3),
-              0 0 20px rgba(39, 214, 155, 0.15);
+              0 0 20px rgba(242, 189, 67, 0.18);
 }
 
 /* ═══════════════════════════════════════════════
@@ -1492,79 +1492,79 @@ a { color: inherit; text-decoration: none; }
   transition: background var(--transition-fast);
 }
 
-/* Finance OS visual refresh: graphite surfaces, luminous accents, and calmer depth. */
+/* Match the login page's deep teal surfaces and warm gold accents. */
 body {
   background:
-    radial-gradient(ellipse at 87% 2%, rgba(22, 106, 133, .16), transparent 35%),
-    radial-gradient(ellipse at 66% 100%, rgba(109, 74, 157, .12), transparent 36%),
+    radial-gradient(ellipse at 87% 2%, rgba(76, 201, 192, .14), transparent 35%),
+    radial-gradient(ellipse at 12% 100%, rgba(228, 154, 43, .07), transparent 36%),
     var(--bg-app);
 }
 
 .finance-bg-canvas { opacity: .08; }
 .sidebar {
-  background: rgba(13, 18, 29, .97);
-  border-right-color: #20283a;
+  background: rgba(6, 27, 34, .97);
+  border-right-color: var(--border-subtle);
   padding: 24px 14px 18px;
 }
-.sidebar-brand { border-bottom-color: #20283a; padding-bottom: 20px; }
+.sidebar-brand { border-bottom-color: var(--border-subtle); padding-bottom: 20px; }
 .brand-mark {
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(145deg, #55e39b, #20c7cf);
-  color: #08221c;
-  box-shadow: 0 5px 18px rgba(51, 218, 156, .16);
+  background: linear-gradient(145deg, #153640, #0c252d);
+  color: var(--finance-gold);
+  box-shadow: 0 5px 18px rgba(228, 154, 43, .12);
 }
 .brand-info { flex-wrap: wrap; column-gap: 7px; }
 .brand-name { font-weight: 700; }
-.brand-badge { color: #7b8aa2; }
-.nav-section-label { padding-top: 20px; color: #64718a; }
-.nav-item { min-height: 39px; border-radius: 9px; color: #8c98ad; }
+.brand-badge { color: var(--text-muted); }
+.nav-section-label { padding-top: 20px; color: var(--text-muted); }
+.nav-item { min-height: 39px; border-radius: 9px; color: var(--text-secondary); }
 .nav-item.active {
   position: relative;
-  background: #1b2435;
-  box-shadow: inset 3px 0 0 var(--finance-mint);
-  color: #f3f6fb;
+  background: #142d35;
+  box-shadow: inset 3px 0 0 var(--finance-gold);
+  color: var(--text-primary);
 }
-.nav-item.active i { color: var(--finance-mint); }
-.sidebar-card { border-radius: 12px; background: #151c2b; }
-.sidebar-footer { border-top-color: #20283a; }
+.nav-item.active i { color: var(--finance-gold); }
+.sidebar-card { border-radius: 12px; background: var(--bg-surface); }
+.sidebar-footer { border-top-color: var(--border-subtle); }
 .main-wrapper { background: transparent; }
 .demo-security-notice {
   padding: 6px 28px;
-  color: #9ca9be;
-  background: rgba(72, 217, 138, .055);
-  border-bottom-color: rgba(72, 217, 138, .13);
+  color: var(--text-secondary);
+  background: rgba(76, 201, 192, .06);
+  border-bottom-color: rgba(76, 201, 192, .14);
   font-size: 11px;
 }
 .topbar {
   padding: 13px 28px;
-  background: rgba(13, 18, 29, .88);
-  border-bottom-color: #20283a;
+  background: rgba(6, 27, 34, .9);
+  border-bottom-color: var(--border-subtle);
   backdrop-filter: blur(22px);
 }
-.search-box, .currency-dropdown-wrap, .icon-btn { background: #111725; border-color: #283247; }
+.search-box, .currency-dropdown-wrap, .icon-btn { background: #0c232a; border-color: var(--border-subtle); }
 .search-box { border-radius: 9px; }
-.date-badge { border-color: #283247; border-radius: 9px; }
+.date-badge { border-color: var(--border-subtle); border-radius: 9px; }
 .btn { border-radius: 9px; }
 .btn-primary {
-  color: #08221c;
-  background: linear-gradient(110deg, #48d98a, #25c6d9);
-  box-shadow: 0 6px 18px rgba(37, 198, 217, .13);
+  color: #0d2330;
+  background: linear-gradient(110deg, #ffe08a, #e49a2b);
+  box-shadow: 0 6px 18px rgba(228, 154, 43, .16);
 }
 .btn-primary:hover { filter: brightness(1.08); }
-.btn-secondary, .btn-outline { border-color: #303a50; }
+.btn-secondary, .btn-outline { border-color: var(--border-medium); }
 .content-container { padding: 28px; }
-.page-title { font-size: 1.7rem; font-weight: 700; letter-spacing: -.04em; }
-.page-subtitle { color: #8692a8; }
+.page-title { font-size: 1.7rem; font-weight: 700; }
+.page-subtitle { color: var(--text-secondary); }
 .card, .kpi-card {
-  background: linear-gradient(145deg, rgba(23, 30, 45, .98), rgba(20, 27, 41, .98));
-  border-color: #293348;
+  background: linear-gradient(145deg, rgba(15, 29, 35, .98), rgba(11, 31, 43, .98));
+  border-color: var(--border-subtle);
   border-radius: 14px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, .13);
 }
-.card-header { border-bottom-color: #252e40; }
+.card-header { border-bottom-color: var(--border-subtle); }
 .card-title { font-size: 15px; }
-.card-subtitle { color: #7f8ba1; }
+.card-subtitle { color: var(--text-muted); }
 .kpi-card {
   position: relative;
   overflow: hidden;
@@ -1582,33 +1582,33 @@ body {
 }
 .kpi-card:nth-child(2)::before { background: var(--finance-mint); }
 .kpi-card:nth-child(3)::before { background: var(--color-loss); }
-.kpi-card:nth-child(4)::before { background: #a58af5; }
-.kpi-label { color: #8793a9; font-size: 10px; letter-spacing: .12em; }
+.kpi-card:nth-child(4)::before { background: var(--finance-gold); }
+.kpi-label { color: var(--text-secondary); font-size: 10px; }
 .kpi-value { font-size: 1.6rem; font-weight: 700; }
 .kpi-icon { width: 30px; height: 30px; border-radius: 9px; }
 .chart-dashboard-grid, .secondary-dashboard-grid, .goals-budget-grid { gap: 14px; }
 .chart-body { height: 280px; }
-.btn-group { border-color: #293348; border-radius: 9px; }
-.btn-group .btn.active, .btn-group .time-btn.active { background: #253148; color: #f1f4fa; }
-.table-responsive, .market-ticker-table-wrap { scrollbar-color: #39465d transparent; }
+.btn-group { border-color: var(--border-subtle); border-radius: 9px; }
+.btn-group .btn.active, .btn-group .time-btn.active { background: #18343d; color: var(--text-primary); }
+.table-responsive, .market-ticker-table-wrap { scrollbar-color: var(--border-medium) transparent; }
 .auth-screen {
   background:
-    radial-gradient(ellipse at 15% 12%, rgba(72, 217, 138, .12), transparent 34%),
-    radial-gradient(ellipse at 88% 76%, rgba(37, 198, 217, .13), transparent 38%),
-    #0b0f18;
+    radial-gradient(ellipse at 15% 12%, rgba(32, 111, 111, .2), transparent 34%),
+    radial-gradient(ellipse at 88% 76%, rgba(228, 154, 43, .08), transparent 38%),
+    #061b22;
 }
 .auth-card {
-  border-color: #293348;
+  border-color: rgba(126, 180, 195, .25);
   border-radius: 18px;
-  background: rgba(21, 28, 43, .94);
+  background: rgba(15, 29, 35, .94);
   box-shadow: 0 28px 80px rgba(0, 0, 0, .38);
   padding: 32px;
 }
-.auth-kicker { color: var(--finance-mint); }
+.auth-kicker { color: var(--finance-gold); }
 
 [data-theme="light"] body {
   background:
-    radial-gradient(ellipse at 87% 2%, rgba(42, 122, 170, .08), transparent 35%),
+    radial-gradient(ellipse at 87% 2%, rgba(51, 126, 130, .08), transparent 35%),
     var(--bg-app);
 }
 [data-theme="light"] .sidebar { background: var(--bg-sidebar); border-right-color: var(--border-subtle); }

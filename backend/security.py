@@ -16,6 +16,14 @@ SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "fin_sight_session")
 bearer = HTTPBearer(auto_error=False)
 
 
+def session_ttl_hours() -> int:
+    try:
+        ttl_hours = int(os.getenv("SESSION_TTL_HOURS", "12"))
+    except ValueError:
+        return 12
+    return ttl_hours if ttl_hours > 0 else 12
+
+
 def hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
     derived = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 310_000)
@@ -39,12 +47,7 @@ def verify_password(password: str, stored: str) -> bool:
 
 def issue_session(db: Session, user: User) -> str:
     token = secrets.token_urlsafe(32)
-    try:
-        ttl_hours = int(os.getenv("SESSION_TTL_HOURS", "12"))
-        if ttl_hours <= 0:
-            ttl_hours = 12
-    except ValueError:
-        ttl_hours = 12
+    ttl_hours = session_ttl_hours()
     db.execute(delete(SessionToken).where(
         (SessionToken.user_id == user.id) & (SessionToken.expires_at <= datetime.now(timezone.utc))
     ))

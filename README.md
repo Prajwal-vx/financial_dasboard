@@ -30,7 +30,7 @@ Before the first deployment:
 
 The bundled SQLite database is for local development only. Vercel Functions have a read-only deployment filesystem with temporary `/tmp` storage, so deployed records must use hosted PostgreSQL. Vercel's Python runtime is currently in beta; review its current plan and function limits before relying on the deployment. Free database plans also have usage and storage limits. Do not store real financial records until the production safeguards in this README are complete.
 
-The API issues a same-origin, HTTP-only session cookie after login or registration and reuses it automatically for subsequent requests. Browser storage is not used for the active session token.
+The API issues a same-origin, HTTP-only session cookie after login and reuses it automatically for subsequent requests. Registration does not create a session; sign in after creating an account. Browser storage is not used for the active session token.
 
 For PostgreSQL, set `DATABASE_URL` before starting the API, for example:
 
