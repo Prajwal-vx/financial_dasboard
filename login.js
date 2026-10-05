@@ -90,7 +90,10 @@ form?.addEventListener('submit', async (event) => {
     const data = await response.json().catch(() => ({}));
     
     if (!response.ok) {
-      throw new Error(data.detail || 'Request failed');
+      const detail = Array.isArray(data.detail)
+        ? data.detail.map((issue) => issue.msg).join(' ')
+        : data.detail;
+      throw new Error(detail || 'Request failed');
     }
 
     if (isRegistering) {

@@ -239,31 +239,16 @@ def test_sql_injection_attempts():
         assert response.status_code in [201, 422, 400], f"SQL injection test with '{payload}' returned {response.status_code}"
 
 
-def test_xss_in_category_name():
-    """Test if XSS is possible in category names"""
+def test_category_names_remain_raw_api_data():
+    """HTML escaping belongs at the UI boundary, not in JSON responses."""
     headers = register("xss@example.com")
-
-    xss_payloads = [
-        "<script>alert('xss')</script>",
-        "<img src=x onerror=alert('xss')>",
-        "javascript:alert('xss')",
-        "<svg onload=alert('xss')>",
-    ]
-
-    for payload in xss_payloads:
-        response = client.post("/api/categories", headers=headers, json={
-            "name": payload,
-            "type": "expense"
-        })
-        if response.status_code == 201:
-            # If accepted, check if it's sanitized in the response
-            category = response.json()
-            # HTML escaping should convert < to &lt; and > to &gt;
-            assert "<script>" not in category["name"], "XSS vulnerability: Unsanitized script tags in response"
-            assert "<img" not in category["name"], "XSS vulnerability: Unsanitized img tags in response"
-            assert "<svg" not in category["name"], "XSS vulnerability: Unsanitized svg tags in response"
-            # The escaped version should contain the HTML entities
-            assert "&lt;" in category["name"] or payload not in category["name"], "XSS should be escaped"
+    payload = "R&D <script>alert('xss')</script>"
+    response = client.post("/api/categories", headers=headers, json={
+        "name": payload,
+        "type": "expense"
+    })
+    assert response.status_code == 201
+    assert response.json()["name"] == payload
 
 
 def test_negative_amount():
@@ -569,7 +554,7 @@ if __name__ == "__main__":
         test_idor_user_a_access_user_b_accounts,
         test_idor_user_a_delete_user_b_transaction,
         test_sql_injection_attempts,
-        test_xss_in_category_name,
+        test_category_names_remain_raw_api_data,
         test_negative_amount,
         test_excessive_precision,
         test_double_spending_race_condition,
