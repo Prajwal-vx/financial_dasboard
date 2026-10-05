@@ -2,7 +2,7 @@ import json
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.models import Account, AuditLog, Category, Transaction, User
