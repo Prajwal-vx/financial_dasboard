@@ -4,8 +4,6 @@ These tests simulate realistic attack scenarios to identify vulnerabilities
 """
 from datetime import date
 from datetime import datetime as DateTime, timedelta, timezone
-from decimal import Decimal
-import json
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
@@ -116,25 +114,14 @@ def test_session_token_expiration():
     assert response.status_code == 401, "Expired session should be rejected"
 
 
-def test_weak_password_rejection():
-    """Test if weak passwords are rejected"""
-    weak_passwords = [
-        "12345678901",  # Only numbers
-        "password123",  # Common word
-        "abcdefghijk",  # Only letters
-        "AAAAAA111111",  # Repeated pattern
-    ]
-    
-    for password in weak_passwords:
-        response = client.post("/api/auth/register", json={
-            "name": "Test",
-            "email": f"weak{password[:5]}@example.com",
-            "password": password,
-            "currency": "NPR"
-        })
-        # Currently only checks length, not strength
-        # This test documents the current state
-        print(f"Password '{password}' response: {response.status_code}")
+def test_password_minimum_length_is_enforced():
+    response = client.post("/api/auth/register", json={
+        "name": "Test",
+        "email": "short-password@example.com",
+        "password": "too-short",
+        "currency": "NPR",
+    })
+    assert response.status_code == 422
 
 
 # ============================================================================
@@ -291,14 +278,13 @@ def test_excessive_precision():
 # BUSINESS LOGIC ATTACKS
 # ============================================================================
 
-def test_double_spending_race_condition():
-    """Test if rapid duplicate transactions can cause double-spending"""
+def test_identical_transactions_are_recorded_independently():
     headers = register("race@example.com")
     account = client.post("/api/accounts", headers=headers, json={
         "name": "Bank", "account_type": "bank", "opening_balance": "100.00"
     }).json()
     
-    # Try to create two identical transactions rapidly
+    # Sequential duplicate entries are allowed; the ledger does not deduplicate them.
     payload = {
         "account_id": account["id"],
         "type": "expense",
@@ -311,14 +297,11 @@ def test_double_spending_race_condition():
     response1 = client.post("/api/transactions", headers=headers, json=payload)
     response2 = client.post("/api/transactions", headers=headers, json=payload)
     
-    # Both should succeed (no uniqueness constraint on transactions)
-    # Check final balance
+    assert response1.status_code == 201
+    assert response2.status_code == 201
     accounts = client.get("/api/accounts", headers=headers).json()
     balance = next(a["current_balance"] for a in accounts if a["id"] == account["id"])
-    
-    # This documents current behavior - both transactions are allowed
-    print(f"Race condition test: Both responses: {response1.status_code}, {response2.status_code}")
-    print(f"Final balance: {balance}")
+    assert balance == "-50.00"
 
 
 def test_transfer_to_nonexistent_account():
@@ -385,11 +368,12 @@ def test_mass_assignment():
         "status": "archived",  # Should be ignored
     })
     
-    if response.status_code == 201:
-        account = response.json()
-        # Verify injected fields were not applied
-        # (This requires checking the actual database or response)
-        print(f"Mass assignment test: Account created with response: {account}")
+    assert response.status_code == 201
+    created = response.json()
+    accounts = client.get("/api/accounts", headers=headers).json()
+    account = next(item for item in accounts if item["id"] == created["id"])
+    assert account["name"] == "Bank"
+    assert account["current_balance"] == "1000.00"
 
 
 # ============================================================================
@@ -416,7 +400,7 @@ def test_bypass_rate_limit():
         headers={"User-Agent": "Different Agent"}
     )
     # Currently IP-based, so this will still be rate limited
-    print(f"Rate limit bypass test with different UA: {response.status_code}")
+    assert response.status_code == 429
 
 
 # ============================================================================
@@ -506,7 +490,7 @@ def test_registration_does_not_auto_login():
 def test_login_page_redirects_authenticated_users():
     """Test that authenticated users are redirected from login page to dashboard"""
     # Register and login a user
-    headers = register("redirect-test@example.com")
+    register("redirect-test@example.com")
     
     # Try to access login page while authenticated
     # The TestClient doesn't follow redirects by default, so we check the response
@@ -515,15 +499,14 @@ def test_login_page_redirects_authenticated_users():
     # If not authenticated, would get login HTML (login.html)
     # Since we're authenticated, we should get the dashboard
     assert response.status_code == 200
-    # The response should be index.html (dashboard) not login.html
-    # We can check by looking for a unique element from the dashboard
-    # or verify the login page elements are NOT present
+    assert 'id="app-layout"' in response.text
+    assert 'id="auth-form"' not in response.text
     
     # Clear cookies and try again - should get login page
     client.cookies.clear()
     response = client.get("/login")
     assert response.status_code == 200
-    # Should be login page now
+    assert 'id="auth-form"' in response.text
 
 
 def test_dashboard_requires_authentication():
@@ -532,65 +515,26 @@ def test_dashboard_requires_authentication():
     
     # Try to access dashboard without authentication
     response = client.get("/dashboard")
-    assert response.status_code == 200  # FileResponse always returns 200
-    # But the content should be login.html, not index.html
-    # The server redirects unauthenticated users to login page
+    assert response.status_code == 200
+    assert 'id="auth-form"' in response.text
+    assert 'id="app-layout"' not in response.text
 
 
-if __name__ == "__main__":
-    print("Running security attack tests...")
-    print("=" * 80)
-    
-    # Run all tests
-    import sys
-    from sqlalchemy import select
-    
-    test_functions = [
-        test_auth_brute_force_timing,
-        test_session_token_reuse,
-        test_session_token_expiration,
-        test_weak_password_rejection,
-        test_idor_user_a_access_user_b_transactions,
-        test_idor_user_a_access_user_b_accounts,
-        test_idor_user_a_delete_user_b_transaction,
-        test_sql_injection_attempts,
-        test_category_names_remain_raw_api_data,
-        test_negative_amount,
-        test_excessive_precision,
-        test_double_spending_race_condition,
-        test_transfer_to_nonexistent_account,
-        test_category_type_mismatch,
-        test_unauthenticated_api_access,
-        test_mass_assignment,
-        test_bypass_rate_limit,
-        test_cors_configuration,
-        test_error_message_information_disclosure,
-        test_registration_does_not_auto_login,
-        test_login_page_redirects_authenticated_users,
-        test_dashboard_requires_authentication,
-    ]
-    
-    passed = 0
-    failed = 0
-    
-    for test_func in test_functions:
-        try:
-            print(f"\nRunning: {test_func.__name__}")
-            test_func()
-            print(f"✓ PASSED: {test_func.__name__}")
-            passed += 1
-        except AssertionError as e:
-            print(f"✗ FAILED: {test_func.__name__}")
-            print(f"  Error: {e}")
-            failed += 1
-        except Exception as e:
-            print(f"✗ ERROR: {test_func.__name__}")
-            print(f"  Exception: {e}")
-            failed += 1
-    
-    print("\n" + "=" * 80)
-    print(f"Results: {passed} passed, {failed} failed")
-    
-    # Reset database between tests
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+def test_unauthenticated_api_access():
+    client.cookies.clear()
+    for path in ("/api/auth/me", "/api/categories", "/api/accounts", "/api/transactions", "/api/summary"):
+        response = client.get(path)
+        assert response.status_code == 401, f"{path} should require authentication"
+
+
+def test_streamed_request_body_limit():
+    response = client.post(
+        "/api/auth/login",
+        content=iter([b"a" * 600_000, b"b" * 600_000]),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Request payload too large"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+

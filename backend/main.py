@@ -75,6 +75,66 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+class RequestBodySizeLimitMiddleware:
+    def __init__(self, app, max_bytes: int = 1_048_576):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        content_length = next(
+            (value for key, value in scope["headers"] if key.lower() == b"content-length"),
+            None,
+        )
+        if content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                response = JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
+                await response(scope, receive, send)
+                return
+            if declared_size > self.max_bytes:
+                response = JSONResponse(status_code=413, content={"detail": "Request payload too large"})
+                await response(scope, receive, send)
+                return
+
+        body_chunks = []
+        received_size = 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            if message["type"] != "http.request":
+                continue
+            chunk = message.get("body", b"")
+            received_size += len(chunk)
+            if received_size > self.max_bytes:
+                response = JSONResponse(status_code=413, content={"detail": "Request payload too large"})
+                await response(scope, receive, send)
+                return
+            body_chunks.append(chunk)
+            if not message.get("more_body", False):
+                break
+
+        body = b"".join(body_chunks)
+        body_sent = False
+
+        async def replay_body():
+            nonlocal body_sent
+            if body_sent:
+                return {"type": "http.disconnect"}
+            body_sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, replay_body, send)
+
+
+app.add_middleware(RequestBodySizeLimitMiddleware)
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -217,18 +277,6 @@ def _fetch_live_market_assets():
 
 @app.middleware("http")
 async def apply_security_controls(request: Request, call_next):
-    # Enforce request body size limit (1MB max for financial endpoints)
-    content_length = request.headers.get("content-length")
-    if content_length:
-        try:
-            if int(content_length) > 1_048_576:
-                return JSONResponse(
-                    status_code=413,
-                    content={"detail": "Request payload too large"},
-                )
-        except ValueError:
-            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
-
     if request.method == "POST" and request.url.path in {"/api/auth/login", "/api/auth/register"}:
         client_ip = request.client.host if request.client else "unknown"
         retry_after = auth_rate_limiter.retry_after(client_ip)

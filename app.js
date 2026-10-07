@@ -224,6 +224,8 @@
     marketCategory: 'all'
   };
 
+  clearDemoState();
+
   let portfolioChartInstance = null;
   let assetDonutChartInstance = null;
   let cashflowChartInstance = null;
@@ -248,6 +250,16 @@
       }
       return response.status === 204 ? null : response.json();
     });
+  }
+
+  async function loadAllTransactions() {
+    const pageSize = 500;
+    const transactions = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await apiRequest(`/api/transactions?limit=${pageSize}&offset=${offset}`);
+      transactions.push(...page);
+      if (page.length < pageSize) return transactions;
+    }
   }
 
   function clearDemoState() {
@@ -288,7 +300,7 @@
   async function loadLiveLedger() {
     const [summary, accounts, categories, transactions] = await Promise.all([
       apiRequest('/api/summary'), apiRequest('/api/accounts'), apiRequest('/api/categories'),
-      apiRequest('/api/transactions?limit=500')
+      loadAllTransactions()
     ]);
     state.accounts = accounts;
     state.categories = categories;
@@ -686,6 +698,10 @@
   function renderMiniMarketTable() {
     const tbody = document.getElementById('mini-market-tbody');
     if (!tbody) return;
+    if (!state.marketAssets.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Market data is not available right now.</td></tr>';
+      return;
+    }
     const topAssets = state.marketAssets.slice(0, 6);
     tbody.innerHTML = topAssets.map((asset) => {
       const isPositive = asset.changePct >= 0;
@@ -744,7 +760,10 @@
       refreshIcons(heroContainer);
     }
 
-    if (empty) empty.classList.toggle('hidden', filtered.length > 0);
+    if (empty) {
+      empty.textContent = state.marketAssets.length ? 'No scrips match that filter.' : 'Market data is not available right now.';
+      empty.classList.toggle('hidden', filtered.length > 0);
+    }
 
     tbody.innerHTML = filtered.map((asset) => {
       const isPositive = asset.changePct >= 0;
@@ -938,7 +957,7 @@
             <span class="text-muted" style="font-size:12px">${remaining >= 0 ? formatCurrency(remaining) + ' left' : 'Over by ' + formatCurrency(Math.abs(remaining))}</span>
           </div>
         `;
-      }).join('') : '<p class="empty-hint">Add a budget to compare planned spending with actual transactions.</p>';
+      }).join('') : '<p class="empty-hint">Budget caps are not available in this release.</p>';
     }
 
     const goalsCardGrid = document.getElementById('goals-card-grid');
@@ -1564,6 +1583,8 @@
     document.getElementById('btn-close-account-modal')?.addEventListener('click', () => closeModal('add-account-modal'));
     document.getElementById('btn-cancel-account-modal')?.addEventListener('click', () => closeModal('add-account-modal'));
     document.getElementById('btn-quick-transfer')?.addEventListener('click', () => openModal('transfer-modal'));
+    document.getElementById('btn-quick-transfer-nav')?.addEventListener('click', () => openModal('transfer-modal'));
+    document.getElementById('btn-export-statement-nav')?.addEventListener('click', exportTransactionsToCSV);
     document.getElementById('btn-close-transfer-modal')?.addEventListener('click', () => closeModal('transfer-modal'));
     document.getElementById('btn-cancel-transfer-modal')?.addEventListener('click', () => closeModal('transfer-modal'));
     document.getElementById('btn-add-goal')?.addEventListener('click', () => openModal('goal-modal'));
