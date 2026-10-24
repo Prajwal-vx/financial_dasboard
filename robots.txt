@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /docs
+Disallow: /redoc
+Disallow: /openapi.json
+Disallow: /verify-email.html
+Disallow: /reset-password
+
+Sitemap: https://finsight.example.com/sitemap.xml

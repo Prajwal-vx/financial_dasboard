@@ -405,6 +405,74 @@ def styles():
     return FileResponse(WORKSPACE_ROOT / "styles.css", media_type="text/css")
 
 
+@app.get("/robots.txt", include_in_schema=False)
+def robots():
+    return FileResponse(WORKSPACE_ROOT / "robots.txt", media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap():
+    return FileResponse(WORKSPACE_ROOT / "sitemap.xml", media_type="application/xml")
+
+
+@app.get("/privacy", include_in_schema=False)
+def privacy_page():
+    return FileResponse(WORKSPACE_ROOT / "privacy.html")
+
+
+@app.get("/terms", include_in_schema=False)
+def terms_page():
+    return FileResponse(WORKSPACE_ROOT / "terms.html")
+
+
+@app.get("/contact", include_in_schema=False)
+def contact_page():
+    return FileResponse(WORKSPACE_ROOT / "contact.html")
+
+
+@app.get("/faq", include_in_schema=False)
+def faq_page():
+    return FileResponse(WORKSPACE_ROOT / "faq.html")
+
+
+# Organization Schema endpoint
+@app.get("/schema.json", include_in_schema=False)
+def organization_schema():
+    from fastapi.responses import JSONResponse
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "FinSight",
+        "url": "https://finsight.example.com",
+        "logo": "https://finsight.example.com/logo.svg",
+        "description": "Personal financial dashboard for tracking accounts, transactions, and investments",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "url": "https://finsight.example.com/contact"
+        }
+    }
+    return JSONResponse(content=schema)
+
+
+@app.get("/404.html", include_in_schema=False)
+def custom_404():
+    return FileResponse(WORKSPACE_ROOT / "404.html", status_code=404)
+
+
+# 301 Redirect handler for old routes
+@app.get("/index.html", include_in_schema=False)
+def redirect_index():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard", status_code=301)
+
+
+# Catch-all 404 handler
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    return FileResponse(WORKSPACE_ROOT / "404.html", status_code=404)
+
+
 @app.get("/logo.svg", include_in_schema=False)
 def logo():
     return FileResponse(WORKSPACE_ROOT / "logo.svg", media_type="image/svg+xml")

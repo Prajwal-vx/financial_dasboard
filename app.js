@@ -1999,6 +1999,8 @@
     setupEventListeners();
     refreshIcons();
     initFinanceBackground();
+    initCookieBanner();
+    initScrollFeatures();
     apiRequest('/api/auth/session').then((session) => {
       if (!session?.authenticated) {
         state.user = null;
@@ -2010,6 +2012,89 @@
     }).catch(() => {
       state.user = null;
       showAuth();
+    });
+  }
+
+  function initCookieBanner() {
+    const cookieBanner = document.getElementById('cookie-banner');
+    const acceptBtn = document.getElementById('cookie-accept');
+    const declineBtn = document.getElementById('cookie-decline');
+
+    // Check if user has already made a choice
+    const cookieChoice = localStorage.getItem('cookie-consent');
+    if (cookieChoice) {
+      return; // Don't show banner if choice already made
+    }
+
+    // Show banner
+    cookieBanner.classList.add('show');
+
+    acceptBtn.addEventListener('click', () => {
+      localStorage.setItem('cookie-consent', 'accepted');
+      cookieBanner.classList.remove('show');
+      // Enable analytics here if needed
+    });
+
+    declineBtn.addEventListener('click', () => {
+      localStorage.setItem('cookie-consent', 'declined');
+      cookieBanner.classList.remove('show');
+      // Disable analytics here if needed
+    });
+  }
+
+  function initScrollFeatures() {
+    const scrollProgress = document.getElementById('scroll-progress');
+    const backToTop = document.getElementById('back-to-top');
+    const floatingContact = document.querySelector('.floating-contact-btn');
+    const contentContainer = document.querySelector('.content-container');
+
+    // Scroll progress bar
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = (scrollTop / docHeight) * 100;
+      scrollProgress.style.width = scrollPercent + '%';
+
+      // Back to top button visibility
+      if (scrollTop > 300) {
+        backToTop.classList.add('visible');
+        floatingContact.classList.add('visible');
+      } else {
+        backToTop.classList.remove('visible');
+        floatingContact.classList.remove('visible');
+      }
+    });
+
+    // Back to top click handler
+    backToTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  function showLoading() {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    loadingOverlay.classList.add('active');
+  }
+
+  function hideLoading() {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    loadingOverlay.classList.remove('active');
+  }
+
+  // Copy to clipboard functionality
+  function copyToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+      button.classList.add('copied');
+      const originalText = button.innerHTML;
+      button.innerHTML = '<i data-lucide="check" aria-hidden="true"></i> Copied!';
+      refreshIcons();
+      setTimeout(() => {
+        button.classList.remove('copied');
+        button.innerHTML = originalText;
+        refreshIcons();
+      }, 2000);
+    }).catch(() => {
+      console.error('Failed to copy to clipboard');
     });
   }
 

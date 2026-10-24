@@ -3,7 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Finance Login</title>
+    <title>Sign In - FinSight Financial Dashboard</title>
+    <meta name="description" content="Sign in to your FinSight financial dashboard to manage your personal ledger, track expenses, and monitor your investments securely." />
+    <link rel="canonical" href="https://finsight.example.com/login" />
+    <meta property="og:title" content="Sign In - FinSight Financial Dashboard" />
+    <meta property="og:description" content="Secure sign in to your personal financial dashboard. Track expenses, manage accounts, and monitor investments." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://finsight.example.com/login" />
+    <meta property="og:image" content="https://finsight.example.com/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sign In - FinSight Financial Dashboard" />
+    <meta name="twitter:description" content="Secure sign in to your personal financial dashboard." />
     <style>
       :root {
         --bg: #061b22;
@@ -174,8 +184,8 @@
     <main class="auth-shell">
       <section class="auth-card" aria-label="Login form">
         <div class="brand" aria-label="FinSight logo">
-          <img class="brand-logo" src="/logo.svg" alt="">
-          <p class="brand-label">Finance Ledger</p>
+          <img class="brand-logo" src="/logo.svg" alt="FinSight Logo" loading="lazy">
+          <p class="brand-label">FinSight</p>
         </div>
 
         <h1 id="auth-heading">Sign in to your Dashboard</h1>
@@ -198,7 +208,19 @@
 
           <div class="field">
             <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <div style="position: relative;">
+              <input id="password" name="password" type="password" autocomplete="current-password" required style="padding-right: 48px;" />
+              <button type="button" id="toggle-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--muted); padding: 8px;" aria-label="Toggle password visibility">
+                <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg id="eye-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              </button>
+            </div>
             <small class="hint">Use at least 12 characters.</small>
           </div>
 

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ - FinSight</title>
+  <meta name="description" content="Frequently asked questions about FinSight financial dashboard. Learn about features, security, data privacy, and how to get started.">
+  <link rel="canonical" href="https://finsight.example.com/faq">
+  <meta property="og:title" content="FAQ - FinSight">
+  <meta property="og:description" content="Find answers to common questions about FinSight financial dashboard.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://finsight.example.com/faq">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg: #061b22;
+      --panel: rgba(15, 29, 35, 0.9);
+      --text: #ebf5f6;
+      --muted: #9db8bf;
+      --border: rgba(126, 180, 195, 0.25);
+      --primary: #e49a2b;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .last-updated {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 32px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 24px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .faq-item {
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .faq-question {
+      width: 100%;
+      padding: 20px 24px;
+      background: none;
+      border: none;
+      text-align: left;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    .faq-question:hover {
+      background: rgba(126, 180, 195, 0.05);
+    }
+    .faq-question .icon {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.3s;
+      flex-shrink: 0;
+    }
+    .faq-item.active .faq-question .icon {
+      transform: rotate(180deg);
+    }
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .faq-answer-content {
+      padding: 0 24px 20px;
+      color: var(--muted);
+    }
+    .faq-item.active .faq-answer {
+      max-height: 500px;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .breadcrumb {
+      margin-bottom: 16px;
+    }
+    .breadcrumb-list {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .breadcrumb-item {
+      color: var(--muted);
+    }
+    .breadcrumb-item a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb-item a:hover {
+      text-decoration: underline;
+    }
+    .breadcrumb-item:not(:last-child)::after {
+      content: "/";
+      margin-left: 8px;
+      color: var(--muted);
+    }
+    .breadcrumb-item.active {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol class="breadcrumb-list">
+        <li class="breadcrumb-item">
+          <a href="/">Home</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+          FAQ
+        </li>
+      </ol>
+    </nav>
+    <h1>Frequently Asked Questions</h1>
+    <p class="last-updated">Last updated: October 24, 2026</p>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        What is FinSight?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          FinSight is a personal financial dashboard that helps you track accounts, monitor transactions, analyze cash flow, and manage your investments in one secure place. It's designed for individuals and small businesses who want better visibility into their finances.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        Is my financial data secure?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          Yes. We use industry-standard security measures including bcrypt password hashing, HTTP-only secure cookies, user-scoped database queries, and rate limiting to protect your data. All data is transmitted over HTTPS. Learn more in our <a href="/privacy">Privacy Policy</a>.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        How do I get started?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          Simply <a href="/login">create an account</a> with your email and a secure password (minimum 12 characters). After email verification, you'll have access to a pre-configured dashboard with a Cash account and starter expense categories. You can then add more accounts, import transactions, and customize your categories.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        Can I import my existing financial data?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          CSV import functionality is planned for a future release. Currently, you can manually add transactions or use the API to programmatically import your data. Contact us if you need assistance with data migration.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        Is FinSight free to use?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          Yes, FinSight is currently free to use. We may introduce premium features in the future, but core financial tracking will remain free. Your data is yours - you can export it at any time.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        What browsers are supported?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          FinSight works on all modern browsers including Chrome, Firefox, Safari, and Edge. We recommend using the latest version of your browser for the best experience and security.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        Can I use FinSight on mobile?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          Yes, FinSight is fully responsive and works on mobile devices, tablets, and desktop computers. The interface adapts to your screen size for optimal viewing.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        How is my data stored?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          Your data is stored in your own database. In local development, this is SQLite. For production deployment, we recommend PostgreSQL. You control where your data lives - self-host or use a cloud provider of your choice.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        What happens if I delete my account?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          When you delete your account, all your personal information and financial data are permanently removed from the database. This action cannot be undone. We recommend exporting your data before deletion if you want to keep a copy.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-question">
+        How do I report a bug or request a feature?
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-content">
+          Please use our <a href="/contact">contact form</a> to report bugs or request features. We appreciate your feedback and use it to improve FinSight.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.faq-question').forEach(button => {
+      button.addEventListener('click', () => {
+        const faqItem = button.parentElement;
+        const isActive = faqItem.classList.contains('active');
+
+        // Close all other FAQ items
+        document.querySelectorAll('.faq-item').forEach(item => {
+          item.classList.remove('active');
+        });
+
+        // Toggle current item
+        if (!isActive) {
+          faqItem.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

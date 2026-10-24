@@ -3,15 +3,111 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Financial Dashboard</title>
-  <meta name="description" content="A private financial dashboard for accounts, transactions, and cash flow.">
+  <title>Financial Dashboard - FinSight Personal Finance Tracker</title>
+  <meta name="description" content="Track your personal finances with FinSight. Manage accounts, monitor transactions, analyze cash flow, and track investments in one secure dashboard.">
+  <link rel="canonical" href="https://finsight.example.com/dashboard">
+  <meta property="og:title" content="Financial Dashboard - FinSight Personal Finance Tracker">
+  <meta property="og:description" content="Track your personal finances with FinSight. Manage accounts, monitor transactions, analyze cash flow, and track investments in one secure dashboard.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://finsight.example.com/dashboard">
+  <meta property="og:image" content="https://finsight.example.com/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Financial Dashboard - FinSight Personal Finance Tracker">
+  <meta name="twitter:description" content="Track your personal finances with FinSight. Manage accounts, monitor transactions, analyze cash flow, and track investments.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "FinSight",
+    "description": "Personal financial dashboard for tracking accounts, transactions, and investments",
+    "url": "https://finsight.example.com",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "FinSight",
+      "url": "https://finsight.example.com",
+      "logo": "https://finsight.example.com/logo.svg"
+    },
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://finsight.example.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Dashboard",
+          "item": "https://finsight.example.com/dashboard"
+        }
+      ]
+    }
+  }
+  </script>
+
+  <!-- Google Analytics (replace GA_MEASUREMENT_ID with your actual ID) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'GA_MEASUREMENT_ID');
+  </script>
+
+  <!-- Google Search Console Verification (replace with your verification code) -->
+  <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE" />
+
+  <!-- Organization Schema -->
+  <link rel="schema.org" href="https://finsight.example.com/schema.json">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <!-- Cookie Consent Banner -->
+  <div id="cookie-banner" class="cookie-banner" role="dialog" aria-label="Cookie consent">
+    <div class="cookie-banner-content">
+      <p class="cookie-banner-text">
+        We use essential cookies to secure your session and provide the service. By continuing, you agree to our use of cookies.
+        <a href="/privacy" class="cookie-banner-link">Learn more</a>
+      </p>
+      <div class="cookie-banner-buttons">
+        <button id="cookie-accept" class="btn btn-primary btn-sm">Accept</button>
+        <button id="cookie-decline" class="btn btn-outline btn-sm">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll Progress Bar -->
+  <div id="scroll-progress" class="scroll-progress" aria-hidden="true"></div>
+
+  <!-- Back to Top Button -->
+  <button id="back-to-top" class="back-to-top" aria-label="Back to top" title="Back to top">
+    <i data-lucide="arrow-up" aria-hidden="true"></i>
+  </button>
+
+  <!-- Floating Contact Button -->
+  <a href="/contact" class="floating-contact-btn" aria-label="Contact us" title="Contact us">
+    <i data-lucide="message-circle" aria-hidden="true"></i>
+  </a>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-spinner"></div>
+    <p>Loading...</p>
+  </div>
 
   <canvas id="finance-bg-canvas" class="finance-bg-canvas" aria-hidden="true"></canvas>
 
@@ -21,11 +117,11 @@
     <aside class="sidebar" id="sidebar" aria-label="Primary">
       <div class="sidebar-brand">
         <div class="brand-mark" aria-hidden="true">
-          <img src="/logo.svg" alt="" width="26" height="26">
+          <img src="/logo.svg" alt="FinSight Logo" width="26" height="26" loading="lazy">
         </div>
         <div class="brand-info">
-          <span class="brand-name">Finance</span>
-          <span class="brand-badge">Ledger</span>
+          <span class="brand-name">FinSight</span>
+          <span class="brand-badge">Dashboard</span>
         </div>
       </div>
 
@@ -149,11 +245,24 @@
       </header>
 
       <main class="content-container" id="main-content">
+        <!-- Breadcrumb Navigation -->
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <ol class="breadcrumb-list">
+            <li class="breadcrumb-item">
+              <a href="/">Home</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+              Dashboard
+            </li>
+          </ol>
+        </nav>
+
         <section class="view-panel active" id="view-overview">
           <div class="page-title-row">
             <div>
               <h1 class="page-title">Financial dashboard</h1>
               <p class="page-subtitle" id="overview-greeting">Your finances, grounded in your ledger.</p>
+              <p class="last-updated-date">Last updated: <span id="last-updated">October 24, 2026</span></p>
             </div>
             <div class="action-btn-group">
               <button type="button" class="btn btn-outline" id="btn-quick-transfer">

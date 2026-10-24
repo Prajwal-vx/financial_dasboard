@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found - FinSight</title>
+  <meta name="description" content="The page you're looking for doesn't exist. Return to the FinSight dashboard or contact support for help.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #061b22;
+      --panel: rgba(15, 29, 35, 0.9);
+      --text: #ebf5f6;
+      --muted: #9db8bf;
+      --primary: #e49a2b;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(32, 111, 111, 0.26), transparent 28%),
+        linear-gradient(130deg, #061b22 0%, #0b1f2b 55%, #081111 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    .error-code {
+      font-size: 8rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 12px;
+      color: var(--text);
+    }
+    p {
+      color: var(--muted);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 28px;
+      background: linear-gradient(90deg, #ffe08a, #e49a2b);
+      color: #0d2330;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+      box-shadow: 0 12px 24px rgba(70, 194, 170, 0.2);
+      transition: filter 0.2s;
+    }
+    .btn:hover {
+      filter: brightness(1.03);
+    }
+    .suggestions {
+      margin-top: 32px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(126, 180, 195, 0.25);
+    }
+    .suggestions p {
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+    .suggestions a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .suggestions a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="error-code">404</div>
+    <h1>Page Not Found</h1>
+    <p>The page you're looking for doesn't exist or has been moved. Let's get you back on track.</p>
+    <a href="/" class="btn">Return to Dashboard</a>
+
+    <div class="suggestions">
+      <p>You might be looking for:</p>
+      <p><a href="/dashboard">Financial Dashboard</a></p>
+      <p><a href="/login">Sign In</a></p>
+      <p><a href="/privacy">Privacy Policy</a></p>
+      <p><a href="/terms">Terms of Use</a></p>
+      <p><a href="/contact">Contact Support</a></p>
+    </div>
+  </div>
+</body>
+</html>

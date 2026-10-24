@@ -165,3 +165,17 @@ form?.addEventListener('submit', async (event) => {
     submitBtn.disabled = false;
   }
 });
+
+// Password visibility toggle
+const togglePasswordBtn = document.getElementById('toggle-password');
+const passwordInput = document.getElementById('password');
+const eyeIcon = document.getElementById('eye-icon');
+const eyeOffIcon = document.getElementById('eye-off-icon');
+
+togglePasswordBtn?.addEventListener('click', () => {
+  const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+  passwordInput.setAttribute('type', type);
+  eyeIcon.style.display = type === 'password' ? 'block' : 'none';
+  eyeOffIcon.style.display = type === 'password' ? 'none' : 'block';
+  togglePasswordBtn.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
+});

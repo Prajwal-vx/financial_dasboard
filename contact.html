@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Us - FinSight</title>
+  <meta name="description" content="Get in touch with the FinSight team. We're here to help with your questions, feedback, and support requests.">
+  <link rel="canonical" href="https://finsight.example.com/contact">
+  <meta property="og:title" content="Contact Us - FinSight">
+  <meta property="og:description" content="Get in touch with the FinSight team for support, feedback, or questions.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://finsight.example.com/contact">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #061b22;
+      --panel: rgba(15, 29, 35, 0.9);
+      --panel-border: rgba(126, 180, 195, 0.25);
+      --text: #ebf5f6;
+      --muted: #9db8bf;
+      --input: #dfeaf0;
+      --primary-1: #ffe08a;
+      --primary-2: #e49a2b;
+      --error: #f8a6a6;
+      --error-bg: rgba(122, 25, 25, 0.52);
+      --success: #4cc9c0;
+      --success-bg: rgba(76, 201, 192, 0.16);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(32, 111, 111, 0.26), transparent 28%),
+        linear-gradient(130deg, #061b22 0%, #0b1f2b 55%, #081111 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 26px;
+      padding: 32px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.28);
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 8px;
+      color: var(--text);
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: #e49a2b;
+      font-weight: 600;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid rgba(170, 190, 200, 0.25);
+      border-radius: 12px;
+      background: rgba(219, 231, 236, 0.96);
+      color: #0d1d24;
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(92, 197, 187, 0.9);
+      box-shadow: 0 0 0 3px rgba(116, 232, 214, 0.18);
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .submit-btn {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 15px 18px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #0d2330;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--primary-1), var(--primary-2));
+      box-shadow: 0 12px 24px rgba(70, 194, 170, 0.2);
+      transition: filter 0.2s;
+    }
+    .submit-btn:hover {
+      filter: brightness(1.03);
+    }
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      display: none;
+    }
+    .message.success {
+      display: block;
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+    .message.error {
+      display: block;
+      background: var(--error-bg);
+      color: var(--error);
+      border: 1px solid rgba(255, 174, 174, 0.35);
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+    }
+    .loading.active {
+      display: block;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(228, 154, 43, 0.3);
+      border-top-color: #e49a2b;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .breadcrumb {
+      margin-bottom: 16px;
+    }
+    .breadcrumb-list {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .breadcrumb-item {
+      color: var(--muted);
+    }
+    .breadcrumb-item a {
+      color: #e49a2b;
+      text-decoration: none;
+    }
+    .breadcrumb-item a:hover {
+      text-decoration: underline;
+    }
+    .breadcrumb-item:not(:last-child)::after {
+      content: "/";
+      margin-left: 8px;
+      color: var(--muted);
+    }
+    .breadcrumb-item.active {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol class="breadcrumb-list">
+        <li class="breadcrumb-item">
+          <a href="/">Home</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+          Contact
+        </li>
+      </ol>
+    </nav>
+    <div class="card">
+      <h1>Contact Us</h1>
+      <p class="subtitle">Have questions or feedback? We'd love to hear from you.</p>
+
+      <div id="success-message" class="message success">
+        Thank you for your message! We'll get back to you within 24-48 hours.
+      </div>
+      <div id="error-message" class="message error"></div>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Sending your message...</p>
+      </div>
+
+      <form id="contact-form">
+        <div class="form-group">
+          <label for="name">Name *</label>
+          <input type="text" id="name" name="name" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email *</label>
+          <input type="email" id="email" name="email" required autocomplete="email">
+          <p class="hint">We'll use this to respond to your inquiry</p>
+        </div>
+
+        <div class="form-group">
+          <label for="subject">Subject *</label>
+          <select id="subject" name="subject" required>
+            <option value="">Select a topic</option>
+            <option value="general">General Inquiry</option>
+            <option value="support">Technical Support</option>
+            <option value="feedback">Feedback</option>
+            <option value="bug">Bug Report</option>
+            <option value="feature">Feature Request</option>
+            <option value="security">Security Concern</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message *</label>
+          <textarea id="message" name="message" required placeholder="Tell us what's on your mind..."></textarea>
+          <p class="hint">Please provide as much detail as possible</p>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">Send Message</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('contact-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const form = this;
+      const submitBtn = document.getElementById('submit-btn');
+      const loading = document.getElementById('loading');
+      const successMessage = document.getElementById('success-message');
+      const errorMessage = document.getElementById('error-message');
+
+      // Hide previous messages
+      successMessage.style.display = 'none';
+      errorMessage.style.display = 'none';
+
+      // Show loading state
+      submitBtn.disabled = true;
+      loading.classList.add('active');
+
+      // Get form data
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData);
+
+      try {
+        // Simulate API call (replace with actual endpoint)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // For now, just show success (in production, send to actual API)
+        // TODO: Implement actual API endpoint for contact form
+
+        // Show success message
+        successMessage.style.display = 'block';
+        form.reset();
+
+        // In production, you would do:
+        // const response = await fetch('/api/contact', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(data)
+        // });
+        // if (!response.ok) throw new Error('Failed to send message');
+
+      } catch (error) {
+        errorMessage.textContent = 'Failed to send your message. Please try again later.';
+        errorMessage.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        loading.classList.remove('active');
+      }
+    });
+  </script>
+</body>
+</html>

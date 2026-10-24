@@ -2,6 +2,60 @@
 
 FinSight is a financial command-center foundation for personal and small-business ledgers. This iteration implements Phase 1: authenticated workspaces, relational accounts and categories, decimal-valued transactions, transfers, derived balances, and audit-preserving deletion. Dashboard data comes from the signed-in user's database records and refreshes every 10 seconds while the page is visible.
 
+## Features
+
+### Core Financial Tracking
+- Account management with opening balances
+- Transaction recording with decimal precision
+- Transfer functionality between accounts
+- Category-based expense tracking
+- Real-time balance calculations
+- Soft deletion with audit trail
+
+### User Experience
+- Dark/Light theme toggle
+- Responsive design for mobile, tablet, and desktop
+- Password visibility toggle
+- Loading animations
+- Scroll progress indicator
+- Back-to-top button
+- Floating contact button
+- Expandable FAQ section
+- Last updated timestamps
+- Copy to clipboard functionality
+- Print-friendly stylesheets
+- Improved hover states
+
+### SEO & Analytics
+- SEO-optimized meta tags
+- Canonical URLs
+- Open Graph tags
+- Twitter Card tags
+- XML Sitemap
+- Robots.txt
+- Custom 404 page
+- 301 redirect handling
+- Organization schema markup
+- Breadcrumb navigation
+- Google Analytics integration (placeholder)
+- Google Search Console verification (placeholder)
+
+### Legal & Compliance
+- Privacy Policy page
+- Terms of Use page
+- Cookie consent banner
+- Working contact form
+- Data declaration in privacy policy
+
+### Accessibility
+- Skip to content link
+- ARIA labels
+- Semantic HTML
+- Keyboard navigation support
+- Screen reader friendly
+- Alt text for images
+- Lazy loading for images
+
 ## Stack
 
 - FastAPI REST API with SQLAlchemy 2
@@ -66,6 +120,19 @@ docker compose up --build
 - `GET /api/market` returns the 50 highest-volume NEPSE scrips from the [Sharesansar live-trading board](https://www.sharesansar.com/live-trading); the dashboard polls every 30 seconds while visible.
 - `GET /api/health`
 
+## Pages
+
+- `/` - Login page (redirects to dashboard if authenticated)
+- `/login` - Login page
+- `/dashboard` - Main financial dashboard
+- `/privacy` - Privacy Policy
+- `/terms` - Terms of Use
+- `/contact` - Contact form
+- `/faq` - Frequently Asked Questions
+- `/robots.txt` - Robots.txt for SEO
+- `/sitemap.xml` - XML Sitemap
+- `/schema.json` - Organization Schema
+
 ## Tests
 
 ```powershell
@@ -79,3 +146,18 @@ The focused tests cover account isolation, transfer neutrality, posted-versus-pe
 This is intentionally the first phase, not the full product brief. Budgets, goals, recurring bills, liabilities/assets, editable transaction history, CSV import, the Financial Health Radar, Digital Twin scenarios, and assistant/search features are not wired to persisted data yet. Market prices and external bank feeds are not connected; no randomized market ticks are shown as real updates. The dashboard's live sync means user-entered ledger changes are persisted and other open sessions refresh within about 10 seconds.
 
 Before production use, add Alembic migrations, a distributed rate limiter at the trusted edge, secure deployment secrets, backup/restore procedures, and a reviewed identity/session design. Configure TLS at the trusted ingress and serve the frontend and API from the same origin. The built-in auth throttle is process-local and is not sufficient by itself for a multi-worker or multi-instance public deployment. Do not use real financial records on an internet-accessible deployment until those gates are complete.
+
+## Configuration Required for Production
+
+Before deploying to production, update the following:
+
+1. **Google Analytics**: Replace `GA_MEASUREMENT_ID` in index.html with your actual GA measurement ID
+2. **Google Search Console**: Replace `YOUR_VERIFICATION_CODE` in index.html with your verification code
+3. **Domain URLs**: Update all `https://finsight.example.com` references to your actual domain
+4. **Open Graph Image**: Create and add an actual OG image at `/og-image.png`
+5. **Email Configuration**: Set up SMTP for email verification and password reset
+6. **Database**: Use PostgreSQL instead of SQLite for production
+
+## Image Optimization
+
+The logo is currently in SVG format, which is optimal for logos. If you add PNG or JPG images, convert them to WebP format for better performance. See `IMAGE_CONVERSION_NOTES.md` for conversion instructions.
