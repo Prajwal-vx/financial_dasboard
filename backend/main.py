@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from collections import deque
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import hashlib
 from html.parser import HTMLParser
@@ -9,22 +9,23 @@ import math
 import os
 from pathlib import Path
 import re
+import secrets
+import smtplib
+from email.message import EmailMessage
 from threading import Lock
 from time import monotonic
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import func, select
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.db import Base, engine, get_db
 from backend.ledger import account_balance, create_transaction, get_account_balances
-from backend.models import Account, AuditLog, Category, SessionToken, Transaction, User
+from backend.models import Account, AuditLog, Category, EmailVerificationToken, PasswordResetToken, SessionToken, Transaction, User
 from backend.schemas import (
     AccountBalanceSummary,
     AccountInput,
@@ -33,8 +34,10 @@ from backend.schemas import (
     AuthSessionOutput,
     CategoryInput,
     CategoryOutput,
+    EmailInput,
     LoginInput,
     RegisterInput,
+    PasswordResetInput,
     SummaryOutput,
     TransactionInput,
     TransactionOutput,
@@ -43,9 +46,9 @@ from backend.schemas import (
 from backend.security import (
     DUMMY_PASSWORD_HASH,
     SESSION_COOKIE_NAME,
-    bearer,
     get_current_user,
     hash_password,
+    issue_email_verification,
     issue_session,
     resolve_current_user,
     session_ttl_hours,
@@ -56,6 +59,17 @@ from backend.security import (
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    # Lightweight migration for existing SQLite deployments; new schemas are created above.
+    if engine.dialect.name == "sqlite":
+        with engine.begin() as connection:
+            columns = {row[1] for row in connection.exec_driver_sql("PRAGMA table_info(users)")}
+            if "email_verified_at" not in columns:
+                connection.exec_driver_sql("ALTER TABLE users ADD COLUMN email_verified_at DATETIME")
+    elif engine.dialect.name == "postgresql":
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP WITH TIME ZONE"
+            )
     yield
 
 
@@ -68,15 +82,6 @@ app = FastAPI(
     redoc_url=None if production else "/redoc",
     openapi_url=None if production else "/openapi.json",
 )
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
-)
-
-
 class RequestBodySizeLimitMiddleware:
     def __init__(self, app, max_bytes: int = 1_048_576):
         self.app = app
@@ -139,7 +144,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 
 
 class AuthRateLimiter:
-    def __init__(self, limit: int = 10, window_seconds: int = 60, max_clients: int = 4096):
+    def __init__(self, limit: int = 5, window_seconds: int = 900, max_clients: int = 4096):
         self.limit = limit
         self.window_seconds = window_seconds
         self.max_clients = max_clients
@@ -275,11 +280,50 @@ def _fetch_live_market_assets():
         _market_cache_expires_at = monotonic() + LIVE_MARKET_CACHE_SECONDS
         return _market_cache_assets
 
+
+def _send_verification_email(email: str, verification_url: str) -> None:
+    host = os.getenv("SMTP_HOST")
+    if not host:
+        if production:
+            raise HTTPException(status_code=503, detail="Email verification is temporarily unavailable.")
+        return
+    message = EmailMessage()
+    message["Subject"] = "FinSight account security"
+    message["From"] = os.getenv("SMTP_FROM", "no-reply@localhost")
+    message["To"] = email
+    message.set_content(f"Verify your email within 24 hours: {verification_url}")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    with smtplib.SMTP(host, port, timeout=10) as smtp:
+        if os.getenv("SMTP_STARTTLS", "true").lower() == "true":
+            smtp.starttls()
+        username, password = os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD")
+        if username and password:
+            smtp.login(username, password)
+        smtp.send_message(message)
+
+
+def _password_is_compromised(password: str) -> bool:
+    digest = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+    response = httpx.get(
+        f"https://api.pwnedpasswords.com/range/{digest[:5]}", timeout=3,
+        headers={"Add-Padding": "true", "User-Agent": "FinSight-password-check"},
+    )
+    response.raise_for_status()
+    return any(line.split(":", 1)[0].upper() == digest[5:] for line in response.text.splitlines() if ":" in line)
+
 @app.middleware("http")
 async def apply_security_controls(request: Request, call_next):
-    if request.method == "POST" and request.url.path in {"/api/auth/login", "/api/auth/register"}:
+    if request.method == "POST" and request.url.path in {
+        "/api/auth/login", "/api/auth/register", "/api/auth/resend-verification",
+        "/api/auth/password-reset/request", "/api/auth/password-reset/confirm",
+    }:
         client_ip = request.client.host if request.client else "unknown"
-        retry_after = auth_rate_limiter.retry_after(client_ip)
+        try:
+            payload = await request.json()
+            email = str(payload.get("email", "")).strip().lower()[:254]
+        except Exception:
+            email = ""
+        retry_after = auth_rate_limiter.retry_after(f"{client_ip}:{email}")
         if retry_after is not None:
             response = JSONResponse(
                 status_code=429,
@@ -320,7 +364,7 @@ def index():
 def login_page(request: Request, db: Session = Depends(get_db)):
     # SECURITY: If user is already authenticated, redirect to dashboard
     try:
-        user = resolve_current_user(request=request, credentials=None, db=db)
+        user = resolve_current_user(request=request, db=db)
         if user:
             return FileResponse(WORKSPACE_ROOT / "index.html")
     except HTTPException:
@@ -332,13 +376,28 @@ def login_page(request: Request, db: Session = Depends(get_db)):
 def dashboard(request: Request, db: Session = Depends(get_db)):
     # SECURITY: Check if user is authenticated before serving dashboard
     try:
-        user = resolve_current_user(request=request, credentials=None, db=db)
+        user = resolve_current_user(request=request, db=db)
         if user:
             return FileResponse(WORKSPACE_ROOT / "index.html")
     except HTTPException:
         pass
     # Not authenticated - redirect to login
     return FileResponse(WORKSPACE_ROOT / "login.html")
+
+
+@app.get("/verify-email.html", include_in_schema=False)
+def verification_success_page():
+    return FileResponse(WORKSPACE_ROOT / "verify-email.html")
+
+
+@app.get("/reset-password", include_in_schema=False)
+def reset_password_page():
+    return FileResponse(WORKSPACE_ROOT / "reset-password.html")
+
+
+@app.get("/reset-password.js", include_in_schema=False)
+def reset_password_script():
+    return FileResponse(WORKSPACE_ROOT / "reset-password.js", media_type="text/javascript")
 
 
 @app.get("/styles.css", include_in_schema=False)
@@ -380,12 +439,20 @@ def register_get():
 
 
 @app.post("/api/auth/register", response_model=AuthResponse, status_code=201)
-def register(payload: RegisterInput, db: Session = Depends(get_db)):
+def register(payload: RegisterInput, request: Request, db: Session = Depends(get_db)):
+    # HIBP k-anonymity range query: only the first 5 SHA-1 hex characters leave the server.
+    try:
+        if _password_is_compromised(payload.password):
+            raise HTTPException(status_code=422, detail="Choose a password that has not appeared in a known data breach.")
+    except httpx.HTTPError:
+        # Availability fallback: length policy still applies if HIBP is unreachable.
+        pass
     user = User(
         name=payload.name.strip(),
         email=payload.email.strip().lower(),
         password_hash=hash_password(payload.password),
         currency=payload.currency.upper(),
+        email_verified_at=None,
     )
     db.add(user)
     try:
@@ -401,21 +468,116 @@ def register(payload: RegisterInput, db: Session = Depends(get_db)):
         db.add(Account(user_id=user.id, name="Cash", account_type="cash", currency=payload.currency.upper(), opening_balance=Decimal("0.00")))
         # SECURITY: Do not auto-login after registration for better security
         # User must explicitly log in with their credentials
+        raw_verification_token = issue_email_verification(db, user)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists")
-    # Return user info but no token - user must login explicitly
+    base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
+    verification_url = f"{base_url}/verify-email?token={raw_verification_token}"
+    try:
+        _send_verification_email(user.email, verification_url)
+    except (OSError, smtplib.SMTPException) as error:
+        # The account and token remain available for resend; avoid rolling back committed data.
+        raise HTTPException(status_code=503, detail="Could not send verification email. Retry using the resend verification option.") from error
     response = JSONResponse(
         content=AuthResponse(
-            access_token="",  # Empty token - user must login
-            token_type="bearer",
             user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
+            verification_url=verification_url if not production and not os.getenv("SMTP_HOST") else None,
         ).model_dump(mode="json"),
         status_code=201,
     )
     # Do not set session cookie - user must login explicitly
     return response
+
+
+@app.post("/api/auth/resend-verification")
+def resend_verification(payload: EmailInput, request: Request, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
+    if user is not None and user.email_verified_at is None:
+        db.execute(delete(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id))
+        token = issue_email_verification(db, user)
+        db.commit()
+        base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
+        verification_url = f"{base_url}/verify-email?token={token}"
+        try:
+            _send_verification_email(user.email, verification_url)
+        except (OSError, smtplib.SMTPException):
+            pass
+        if not production and not os.getenv("SMTP_HOST"):
+            return {"detail": "If that account needs verification, a link is available.", "verification_url": verification_url}
+    return {"detail": "If that account needs verification, an email will be sent."}
+
+
+@app.post("/api/auth/password-reset/request")
+def request_password_reset(payload: EmailInput, request: Request, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == payload.email.strip().lower(), User.email_verified_at.is_not(None)))
+    if user is not None:
+        db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+        token = secrets.token_urlsafe(32)
+        db.add(PasswordResetToken(
+            user_id=user.id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        ))
+        db.commit()
+        base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
+        reset_url = f"{base_url}/reset-password?token={token}"
+        try:
+            _send_verification_email(user.email, f"Reset your FinSight password: {reset_url}")
+        except (OSError, smtplib.SMTPException):
+            pass
+        if not production and not os.getenv("SMTP_HOST"):
+            return {"detail": "If the account exists and is verified, a reset link is available.", "reset_url": reset_url}
+    return {"detail": "If the account exists and is verified, a reset email will be sent."}
+
+
+@app.post("/api/auth/password-reset/confirm")
+def confirm_password_reset(payload: PasswordResetInput, db: Session = Depends(get_db)):
+    try:
+        if _password_is_compromised(payload.password):
+            raise HTTPException(status_code=422, detail="Choose a password that has not appeared in a known data breach.")
+    except httpx.HTTPError:
+        pass
+    token_hash = hashlib.sha256(payload.token.encode()).hexdigest()
+    reset = db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash))
+    now = datetime.now(timezone.utc)
+    if reset is None:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or expired.")
+    expires_at = reset.expires_at.replace(tzinfo=timezone.utc) if reset.expires_at.tzinfo is None else reset.expires_at
+    if expires_at <= now:
+        db.delete(reset)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Reset link is invalid or expired.")
+    user = db.get(User, reset.user_id)
+    if user is None:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or expired.")
+    user.password_hash = hash_password(payload.password)
+    db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+    db.execute(delete(SessionToken).where(SessionToken.user_id == user.id))
+    db.commit()
+    return {"detail": "Password updated. Sign in with your new password."}
+
+
+@app.get("/verify-email", include_in_schema=False)
+def verify_email(token: str, db: Session = Depends(get_db)):
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    verification = db.scalar(select(EmailVerificationToken).where(EmailVerificationToken.token_hash == token_hash))
+    now = datetime.now(timezone.utc)
+    if verification is None:
+        return HTMLResponse("<h1>Verification link is invalid.</h1><a href='/login'>Return to sign in</a>", status_code=400)
+    expires_at = verification.expires_at.replace(tzinfo=timezone.utc) if verification.expires_at.tzinfo is None else verification.expires_at
+    if expires_at <= now:
+        db.delete(verification)
+        db.commit()
+        return HTMLResponse("<h1>Verification link expired.</h1><a href='/login'>Return to sign in</a>", status_code=410)
+    user = db.get(User, verification.user_id)
+    if user is None:
+        raise HTTPException(status_code=400, detail="Verification link is invalid.")
+    user.email_verified_at = now
+    db.execute(delete(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id))
+    db.commit()
+    return FileResponse(WORKSPACE_ROOT / "verify-email.html")
 
 
 @app.get("/api/auth/login", include_in_schema=False)
@@ -429,12 +591,12 @@ def login(payload: LoginInput, db: Session = Depends(get_db)):
     password_ok = verify_password(payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH)
     if user is None or not password_ok:
         raise HTTPException(status_code=401, detail="Email or password is incorrect")
+    if user.email_verified_at is None:
+        raise HTTPException(status_code=403, detail="Please verify your email before signing in.", headers={"X-Verify-Email": "required"})
     token = issue_session(db, user)
     db.commit()
     response = JSONResponse(
         content=AuthResponse(
-            access_token=token,
-            token_type="bearer",
             user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
         ).model_dump(mode="json"),
     )
@@ -443,7 +605,7 @@ def login(payload: LoginInput, db: Session = Depends(get_db)):
         value=token,
         httponly=True,
         samesite="lax",
-        secure=production,
+        secure=True,
         path="/",
         max_age=session_ttl_hours() * 3600,
     )
@@ -454,13 +616,12 @@ def login(payload: LoginInput, db: Session = Depends(get_db)):
 def logout(
     request: Request,
     user: User = Depends(get_current_user),
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ):
-    raw_token = credentials.credentials if credentials is not None else request.cookies.get(SESSION_COOKIE_NAME)
+    raw_token = request.cookies.get(SESSION_COOKIE_NAME)
     if raw_token is None:
         response = Response(status_code=204)
-        response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=production)
+        response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=True)
         return response
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     session = db.scalar(select(SessionToken).where(SessionToken.user_id == user.id, SessionToken.token_hash == token_hash))
@@ -468,14 +629,14 @@ def logout(
         db.delete(session)
         db.commit()
     response = Response(status_code=204)
-    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=production)
+    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=True)
     return response
 
 
 @app.get("/api/auth/session", response_model=AuthSessionOutput)
 def session_status(request: Request, db: Session = Depends(get_db)):
     try:
-        user = resolve_current_user(request=request, credentials=None, db=db)
+        user = resolve_current_user(request=request, db=db)
     except HTTPException:
         return AuthSessionOutput(authenticated=False, user=None)
     return AuthSessionOutput(

@@ -1,6 +1,6 @@
 # FinSight Security Review
 
-**Updated:** October 7, 2026  
+**Updated:** October 24, 2026
 **Scope:** Source review of the application and its automated tests. This is not an independent penetration test or a third-party dependency vulnerability scan.
 
 ## Current Assessment
@@ -17,17 +17,27 @@ The review corrected several concrete issues:
 
 ## Implemented Protections
 
+- Login now returns no session token in JSON. JavaScript no longer sends or stores a bearer token; the browser sends the Secure, HTTP-only, SameSite=Lax cookie automatically.
+- Login and signup use a five-attempt rolling window per client IP and normalized email (15 minutes). A sixth attempt returns HTTP 429 with `Retry-After`.
+- Signup checks passwords against HIBP via a k-anonymity range request; the full password and full SHA-1 digest are not sent.
+
 - Passwords use PBKDF2-HMAC-SHA256 with 310,000 iterations and a per-password salt.
 - Session tokens are randomly generated, stored as SHA-256 hashes, expire, and are invalidated at logout.
 - Private account, category, summary, and transaction queries are scoped to the authenticated user.
 - Pydantic schemas validate transaction amounts, currencies, dates, enum values, and input lengths.
 - SQLAlchemy queries use bound parameters; financial mutations and their audit records are committed together.
 - Responses include CSP and common browser security headers; API responses are marked `no-store`.
-- The browser session cookie is HTTP-only and SameSite=Lax, with Secure enabled when `APP_ENV=production`.
+- The browser session cookie is HTTP-only, Secure, and SameSite=Lax.
 - User-supplied strings in the dashboard's HTML templates are escaped at the rendering boundary. API JSON intentionally returns raw data; it does not HTML-escape JSON strings.
 - Request bodies are limited to 1 MiB, including chunked bodies.
 
 ## Remaining Risks and Scope
+
+- Email verification is now required. Users receive a single-use, 24-hour link; login and protected endpoints reject unverified accounts. Password reset uses a single-use, 30-minute token and revokes existing sessions. Both flows require SMTP settings in production.
+- There are no roles in the user model. All authenticated users act as their own ledger owner. No Supabase project or RLS database exists in this application; tenant isolation is implemented in server-side SQLAlchemy filters and ownership checks.
+- Route authorization audit: `/api/auth/me`, categories, accounts, transactions, and summary require the server session. Their pre-change state was already protected by `get_current_user` and user ownership filters; no unprotected financial write route was found. `/api/health` and `/api/market` are intentionally public and read-only. Registration and login are intentionally public.
+- The IP/email limiter is process-local and the app currently has no password-reset endpoint; distributed deployments need shared rate limiting before scaling. The reset path is included in limiter matching if added later.
+- HIBP failures are fail-open, so this check is not guaranteed when the upstream service is unavailable.
 
 - Authentication rate limiting is process-local and keyed by client IP. It is not adequate as the only control for multiple workers, replicas, or an untrusted reverse-proxy setup.
 - TLS termination, secret management, database backups and restore testing, monitoring, and operational audit-log retention must be configured outside this application.

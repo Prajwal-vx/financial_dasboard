@@ -5,7 +5,6 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -13,7 +12,6 @@ from backend.db import get_db
 from backend.models import SessionToken, User
 
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "fin_sight_session")
-bearer = HTTPBearer(auto_error=False)
 
 
 def session_ttl_hours() -> int:
@@ -59,12 +57,20 @@ def issue_session(db: Session, user: User) -> str:
     return token
 
 
-def resolve_current_user(request: Request, credentials: HTTPAuthorizationCredentials | None, db: Session) -> User:
-    raw_token = None
-    if credentials is not None:
-        raw_token = credentials.credentials
-    else:
-        raw_token = request.cookies.get(SESSION_COOKIE_NAME)
+def issue_email_verification(db: Session, user: User) -> str:
+    from backend.models import EmailVerificationToken
+
+    token = secrets.token_urlsafe(32)
+    db.add(EmailVerificationToken(
+        user_id=user.id,
+        token_hash=hashlib.sha256(token.encode()).hexdigest(),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    ))
+    return token
+
+
+def resolve_current_user(request: Request, db: Session) -> User:
+    raw_token = request.cookies.get(SESSION_COOKIE_NAME)
     if raw_token is None or not raw_token.strip():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sign in to access financial records")
     if len(raw_token) > 256:
@@ -81,12 +87,14 @@ def resolve_current_user(request: Request, credentials: HTTPAuthorizationCredent
     user = db.get(User, session.user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is unavailable")
+    if user.email_verified_at is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Please verify your email before continuing.", headers={"X-Verify-Email": "required"})
     return user
 
 
 def get_current_user(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    return resolve_current_user(request, credentials, db)
+    # Browser sessions are cookie-only; never accept JS-readable bearer tokens.
+    return resolve_current_user(request, db)

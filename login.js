@@ -10,6 +10,8 @@ const heading = document.getElementById('auth-heading');
 const lead = document.getElementById('auth-lead');
 const submitBtn = document.getElementById('auth-submit');
 const modeToggle = document.getElementById('auth-mode-toggle');
+const resendVerification = document.getElementById('resend-verification');
+const requestPasswordReset = document.getElementById('request-password-reset');
 
 let isRegistering = false;
 
@@ -39,6 +41,10 @@ function toggleAuthMode() {
   isRegistering = !isRegistering;
   
   if (isRegistering) {
+    if (passwordInput.value.length < 12) {
+      showError('Use a password at least 12 characters long.');
+      return;
+    }
     // Switch to register mode
     nameField.classList.remove('hidden');
     nameInput.required = true;
@@ -59,10 +65,54 @@ function toggleAuthMode() {
   }
   
   clearError();
+  resendVerification?.classList.add('hidden');
   form.reset();
 }
 
 modeToggle?.addEventListener('click', toggleAuthMode);
+
+resendVerification?.addEventListener('click', async () => {
+  resendVerification.disabled = true;
+  try {
+    const response = await fetch('/api/auth/resend-verification', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput.value.trim() })
+    });
+    const data = await response.json().catch(() => ({}));
+    const message = data.verification_url
+      ? `Verification link: ${data.verification_url}`
+      : 'If the account needs verification, a new email has been sent.';
+    showError(message, true);
+  } catch {
+    showError('Could not resend the email. Please try again.');
+  } finally {
+    resendVerification.disabled = false;
+  }
+});
+
+requestPasswordReset?.addEventListener('click', async () => {
+  if (!emailInput.value.trim()) {
+    showError('Enter your email address first.');
+    emailInput.focus();
+    return;
+  }
+  requestPasswordReset.disabled = true;
+  try {
+    const response = await fetch('/api/auth/password-reset/request', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput.value.trim() })
+    });
+    const data = await response.json().catch(() => ({}));
+    showError(data.reset_url ? `Reset link: ${data.reset_url}` : data.detail || 'If the account exists, a reset email will be sent.', true);
+  } catch {
+    showError('Could not request a password reset. Please try again.');
+  } finally {
+    requestPasswordReset.disabled = false;
+  }
+});
 
 form?.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -97,9 +147,12 @@ form?.addEventListener('submit', async (event) => {
     }
 
     if (isRegistering) {
-      // Registration successful - show success and switch to login
+      // Verification must complete before the account can sign in.
       toggleAuthMode(); // Switch back to login mode
-      showError('Account created successfully! Please sign in with your credentials.', true);
+      const message = data.verification_url
+        ? `Account created. Verify your email to continue: ${data.verification_url}`
+        : 'Account created. Check your email and follow the verification link before signing in.';
+      showError(message, true);
       setTimeout(clearError, 3000);
     } else {
       // Login successful - redirect to dashboard
@@ -107,6 +160,7 @@ form?.addEventListener('submit', async (event) => {
     }
   } catch (error) {
     showError(error.message || 'Unable to complete request. Please try again.');
+    if (!isRegistering && error.status === 403) resendVerification?.classList.remove('hidden');
   } finally {
     submitBtn.disabled = false;
   }

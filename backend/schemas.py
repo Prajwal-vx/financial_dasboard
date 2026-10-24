@@ -36,6 +36,20 @@ class LoginInput(BaseModel):
         return value.strip().lower() if isinstance(value, str) else value
 
 
+class EmailInput(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower() if isinstance(value, str) else value
+
+
+class PasswordResetInput(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+    password: str = Field(min_length=12, max_length=128)
+
+
 class AccountInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     account_type: Literal["cash", "bank", "wallet", "credit_card", "investment", "loan", "other"]
@@ -167,9 +181,8 @@ class UserOutput(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
     user: UserOutput
+    verification_url: str | None = None
 
 
 class AuthSessionOutput(BaseModel):

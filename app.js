@@ -42,7 +42,6 @@
 
   const state = {
     user: null,
-    apiToken: '',
     accounts: [],
     categories: [],
     lastSyncedAt: null,
@@ -237,7 +236,6 @@
   function apiRequest(path, options) {
     const requestOptions = Object.assign({ credentials: 'same-origin' }, options || {});
     const headers = Object.assign({ 'Content-Type': 'application/json' }, requestOptions.headers || {});
-    if (state.apiToken) headers.Authorization = `Bearer ${state.apiToken}`;
     return fetch(path, Object.assign({}, requestOptions, { headers })).then(async (response) => {
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -421,12 +419,6 @@
     } catch {}
   }
 
-  function removeBrowserStorage(storageName, key) {
-    try {
-      window[storageName].removeItem(key);
-    } catch {}
-  }
-
   function loadPersistedGoals() {
     const userId = state.user?.id || 'default';
     try {
@@ -490,7 +482,6 @@
     const auth = document.getElementById('auth-screen');
     const app = document.getElementById('app-layout');
     state.user = null;
-    state.apiToken = '';
     if (!auth) {
       window.location.replace('/login');
       return;
@@ -1400,7 +1391,6 @@
           setTimeout(() => setFormError('auth-error', ''), 3000);
         } else {
           // Login - proceed to app
-          state.apiToken = session.access_token;
           state.user = session.user;
           await enterApp();
         }
@@ -1424,7 +1414,6 @@
         tickTimer = null;
       }
       stopLiveMarketFeed();
-      state.apiToken = '';
       showAuth();
     });
   }
@@ -2010,20 +1999,16 @@
     setupEventListeners();
     refreshIcons();
     initFinanceBackground();
-    state.apiToken = '';
     apiRequest('/api/auth/session').then((session) => {
       if (!session?.authenticated) {
         state.user = null;
-        state.apiToken = '';
         showAuth();
         return;
       }
       state.user = session.user;
-      state.apiToken = '';
       return enterApp();
     }).catch(() => {
       state.user = null;
-      state.apiToken = '';
       showAuth();
     });
   }
