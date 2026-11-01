@@ -6,3 +6,13 @@ venv/
 .env
 .pytest_cache/
 .vercel
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+node_modules/
