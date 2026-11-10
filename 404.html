@@ -82,6 +82,14 @@
     .suggestions a:hover {
       text-decoration: underline;
     }
+    .btn:focus-visible, .suggestions a:focus-visible { outline: 3px solid #73efdc; outline-offset: 3px; }
+    @media (max-width: 520px) {
+      body { padding: 16px; }
+      .error-code { font-size: clamp(5rem, 24vw, 7rem); }
+      h1 { font-size: clamp(1.5rem, 7vw, 2rem); }
+      p { margin-bottom: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>

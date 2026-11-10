@@ -168,7 +168,6 @@ form?.addEventListener('submit', async (event) => {
 
 // Password visibility toggle
 const togglePasswordBtn = document.getElementById('toggle-password');
-const passwordInput = document.getElementById('password');
 const eyeIcon = document.getElementById('eye-icon');
 const eyeOffIcon = document.getElementById('eye-off-icon');
 

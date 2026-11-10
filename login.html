@@ -178,11 +178,59 @@
         .auth-card { padding: 22px 18px; }
         h1 { font-size: 2rem; }
       }
+
+      :root {
+        --panel: #0f1d23;
+        --panel-border: rgba(126, 180, 195, 0.24);
+        --text: #ebf5f6;
+        --muted: #b2c9ce;
+      }
+      body {
+        min-width: 320px;
+        padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+        background: #071b22;
+      }
+      .auth-shell { width: min(100%, 460px); padding: 0; }
+      .auth-card {
+        border-radius: 16px;
+        box-shadow: 0 16px 44px rgba(0, 0, 0, .22);
+        padding: clamp(22px, 5vw, 38px);
+      }
+      h1 { font-size: clamp(1.8rem, 6vw, 2.35rem); letter-spacing: -.035em; }
+      .subtitle { font-size: 1rem; line-height: 1.55; }
+      input {
+        min-height: 48px;
+        border-radius: 9px;
+        font-size: 1rem;
+        border-color: rgba(126, 180, 195, .3);
+      }
+      input:focus-visible, button:focus-visible {
+        outline: 3px solid #73efdc;
+        outline-offset: 3px;
+      }
+      .primary-btn {
+        min-height: 48px;
+        border-radius: 9px;
+        background: #e49a2b;
+        box-shadow: none;
+        transition: filter 160ms ease, transform 160ms ease;
+      }
+      .primary-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+      .secondary-link { min-height: 44px; color: #73efdc; }
+      .brand-logo { border-radius: 8px; }
+      @media (max-width: 380px) {
+        body { padding-inline: 12px; }
+        .auth-card { padding: 20px 16px; }
+        .brand-logo { width: 40px; height: 40px; flex-basis: 40px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      }
     </style>
   </head>
   <body>
     <main class="auth-shell">
-      <section class="auth-card" aria-label="Login form">
+        <section class="auth-card" aria-labelledby="auth-heading">
         <div class="brand" aria-label="FinSight logo">
           <img class="brand-logo" src="/logo.svg" alt="FinSight Logo" loading="lazy">
           <p class="brand-label">FinSight</p>

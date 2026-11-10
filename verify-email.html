@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Email verified | FinSight</title>
     <style>
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #061b22; color: #ebf5f6; font: 1rem "Segoe UI", sans-serif; }
-      main { max-width: 32rem; margin: 1rem; padding: 2rem; border: 1px solid #31545d; border-radius: 1rem; background: #0f1d23; }
-      a { color: #ffe08a; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); background: #071b22; color: #ebf5f6; font: 1rem/1.55 "Segoe UI", sans-serif; }
+      main { width: min(100%, 32rem); padding: clamp(1.25rem, 5vw, 2.25rem); border: 1px solid #31545d; border-radius: 1rem; background: #0f1d23; }
+      h1 { line-height: 1.15; letter-spacing: -.03em; }
+      a { display: inline-flex; align-items: center; min-height: 44px; color: #ffe08a; }
+      a:focus-visible { outline: 3px solid #73efdc; outline-offset: 3px; }
     </style>
   </head>
   <body>

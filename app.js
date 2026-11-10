@@ -1447,6 +1447,13 @@
 
   function setupEventListeners() {
     const navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-view]');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const closeSidebar = () => {
+      sidebar?.classList.remove('open');
+      sidebarToggle?.setAttribute('aria-expanded', 'false');
+      sidebarToggle?.setAttribute('aria-label', 'Open menu');
+    };
     navItems.forEach((item) => {
       item.addEventListener('click', () => {
         const targetView = item.dataset.view;
@@ -1478,7 +1485,7 @@
             updateKpiCards();
           }
         }
-        document.getElementById('sidebar')?.classList.remove('open');
+        closeSidebar();
       });
     });
 
@@ -1546,8 +1553,20 @@
       setTheme(state.currentTheme === 'dark' ? 'light' : 'dark');
     });
 
-    document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
-      document.getElementById('sidebar')?.classList.toggle('open');
+    sidebarToggle?.addEventListener('click', () => {
+      const open = !sidebar?.classList.contains('open');
+      sidebar?.classList.toggle('open', open);
+      sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      sidebarToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    });
+    document.addEventListener('click', (event) => {
+      if (sidebar?.classList.contains('open') && !sidebar.contains(event.target) && !sidebarToggle?.contains(event.target)) closeSidebar();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && sidebar?.classList.contains('open')) {
+        closeSidebar();
+        sidebarToggle?.focus();
+      }
     });
 
     const notifBtn = document.getElementById('notif-btn');
