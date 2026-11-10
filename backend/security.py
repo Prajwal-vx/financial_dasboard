@@ -87,8 +87,6 @@ def resolve_current_user(request: Request, db: Session) -> User:
     user = db.get(User, session.user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is unavailable")
-    if user.email_verified_at is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Please verify your email before continuing.", headers={"X-Verify-Email": "required"})
     return user
 
 

@@ -10,7 +10,6 @@ const heading = document.getElementById('auth-heading');
 const lead = document.getElementById('auth-lead');
 const submitBtn = document.getElementById('auth-submit');
 const modeToggle = document.getElementById('auth-mode-toggle');
-const resendVerification = document.getElementById('resend-verification');
 const requestPasswordReset = document.getElementById('request-password-reset');
 
 let isRegistering = false;
@@ -65,32 +64,10 @@ function toggleAuthMode() {
   }
   
   clearError();
-  resendVerification?.classList.add('hidden');
   form.reset();
 }
 
 modeToggle?.addEventListener('click', toggleAuthMode);
-
-resendVerification?.addEventListener('click', async () => {
-  resendVerification.disabled = true;
-  try {
-    const response = await fetch('/api/auth/resend-verification', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailInput.value.trim() })
-    });
-    const data = await response.json().catch(() => ({}));
-    const message = data.verification_url
-      ? `Verification link: ${data.verification_url}`
-      : 'If the account needs verification, a new email has been sent.';
-    showError(message, true);
-  } catch {
-    showError('Could not resend the email. Please try again.');
-  } finally {
-    resendVerification.disabled = false;
-  }
-});
 
 requestPasswordReset?.addEventListener('click', async () => {
   if (!emailInput.value.trim()) {
@@ -147,20 +124,14 @@ form?.addEventListener('submit', async (event) => {
     }
 
     if (isRegistering) {
-      // Verification must complete before the account can sign in.
       toggleAuthMode(); // Switch back to login mode
-      const message = data.verification_url
-        ? `Account created. Verify your email to continue: ${data.verification_url}`
-        : 'Account created. Check your email and follow the verification link before signing in.';
-      showError(message, true);
-      setTimeout(clearError, 3000);
+      showError('Account created. You can now sign in.', true);
     } else {
       // Login successful - redirect to dashboard
       window.location.href = '/dashboard';
     }
   } catch (error) {
     showError(error.message || 'Unable to complete request. Please try again.');
-    if (!isRegistering && error.status === 403) resendVerification?.classList.remove('hidden');
   } finally {
     submitBtn.disabled = false;
   }

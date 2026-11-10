@@ -84,7 +84,7 @@ Before the first deployment:
 
 The bundled SQLite database is for local development only. Vercel Functions have a read-only deployment filesystem with temporary `/tmp` storage, so deployed records must use hosted PostgreSQL. Vercel's Python runtime is currently in beta; review its current plan and function limits before relying on the deployment. Free database plans also have usage and storage limits. Do not store real financial records until the production safeguards in this README are complete.
 
-The API issues a same-origin, HTTP-only session cookie after login and reuses it automatically for subsequent requests. Registration sends an email-verification link and does not create a session; verify the email before signing in. Configure `APP_BASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, and optionally `SMTP_USERNAME` / `SMTP_PASSWORD` for deployment. Browser storage is not used for the active session token. Local development without SMTP returns manual verification/reset URLs in the relevant API responses.
+The API issues a same-origin, HTTP-only session cookie after login and reuses it automatically for subsequent requests. Registration does not send a verification email; sign in with the email address and password after creating an account. Each normalized email address can only be registered once. Configure `APP_BASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, and optionally `SMTP_USERNAME` / `SMTP_PASSWORD` only if password-reset emails are needed. Browser storage is not used for the active session token. Local development without SMTP returns a manual password-reset URL when requested.
 
 For PostgreSQL, set `DATABASE_URL` before starting the API, for example:
 
@@ -155,7 +155,7 @@ Before deploying to production, update the following:
 2. **Google Search Console**: Replace `YOUR_VERIFICATION_CODE` in index.html with your verification code
 3. **Domain URLs**: Update all `https://finsight.example.com` references to your actual domain
 4. **Open Graph Image**: Create and add an actual OG image at `/og-image.png`
-5. **Email Configuration**: Set up SMTP for email verification and password reset
+5. **Email Configuration**: Set up SMTP if password-reset emails are needed
 6. **Database**: Use PostgreSQL instead of SQLite for production
 
 ## Image Optimization

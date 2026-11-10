@@ -48,7 +48,6 @@ from backend.security import (
     SESSION_COOKIE_NAME,
     get_current_user,
     hash_password,
-    issue_email_verification,
     issue_session,
     resolve_current_user,
     session_ttl_hours,
@@ -89,6 +88,13 @@ class RequestBodySizeLimitMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        # Browsers send no request body for these methods. Let Starlette keep
+        # the original receive channel so its disconnect monitor does not see
+        # a synthetic disconnect after this middleware buffers an empty body.
+        if scope["method"] in {"GET", "HEAD", "OPTIONS"}:
             await self.app(scope, receive, send)
             return
 
@@ -281,17 +287,17 @@ def _fetch_live_market_assets():
         return _market_cache_assets
 
 
-def _send_verification_email(email: str, verification_url: str) -> None:
+def _send_email(email: str, subject: str, body: str) -> None:
     host = os.getenv("SMTP_HOST")
     if not host:
         if production:
-            raise HTTPException(status_code=503, detail="Email verification is temporarily unavailable.")
+            raise HTTPException(status_code=503, detail="Email delivery is temporarily unavailable.")
         return
     message = EmailMessage()
-    message["Subject"] = "FinSight account security"
+    message["Subject"] = subject
     message["From"] = os.getenv("SMTP_FROM", "no-reply@localhost")
     message["To"] = email
-    message.set_content(f"Verify your email within 24 hours: {verification_url}")
+    message.set_content(body)
     port = int(os.getenv("SMTP_PORT", "587"))
     with smtplib.SMTP(host, port, timeout=10) as smtp:
         if os.getenv("SMTP_STARTTLS", "true").lower() == "true":
@@ -534,52 +540,30 @@ def register(payload: RegisterInput, request: Request, db: Session = Depends(get
         ]
         db.add_all([Category(user_id=user.id, name=name, type=kind) for name, kind in categories])
         db.add(Account(user_id=user.id, name="Cash", account_type="cash", currency=payload.currency.upper(), opening_balance=Decimal("0.00")))
-        # SECURITY: Do not auto-login after registration for better security
-        # User must explicitly log in with their credentials
-        raw_verification_token = issue_email_verification(db, user)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists")
-    base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
-    verification_url = f"{base_url}/verify-email?token={raw_verification_token}"
-    try:
-        _send_verification_email(user.email, verification_url)
-    except (OSError, smtplib.SMTPException) as error:
-        # The account and token remain available for resend; avoid rolling back committed data.
-        raise HTTPException(status_code=503, detail="Could not send verification email. Retry using the resend verification option.") from error
     response = JSONResponse(
         content=AuthResponse(
             user=UserOutput(id=user.id, name=user.name, email=user.email, currency=user.currency),
-            verification_url=verification_url if not production and not os.getenv("SMTP_HOST") else None,
         ).model_dump(mode="json"),
         status_code=201,
     )
-    # Do not set session cookie - user must login explicitly
+    # Keep sign-in explicit; no verification email or token is required.
     return response
 
 
 @app.post("/api/auth/resend-verification")
-def resend_verification(payload: EmailInput, request: Request, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
-    if user is not None and user.email_verified_at is None:
-        db.execute(delete(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id))
-        token = issue_email_verification(db, user)
-        db.commit()
-        base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
-        verification_url = f"{base_url}/verify-email?token={token}"
-        try:
-            _send_verification_email(user.email, verification_url)
-        except (OSError, smtplib.SMTPException):
-            pass
-        if not production and not os.getenv("SMTP_HOST"):
-            return {"detail": "If that account needs verification, a link is available.", "verification_url": verification_url}
-    return {"detail": "If that account needs verification, an email will be sent."}
+def resend_verification():
+    # Retained as a compatibility endpoint for older clients. Sign-up no longer
+    # requires email verification, and this endpoint never sends email.
+    return {"detail": "Email verification is not required."}
 
 
 @app.post("/api/auth/password-reset/request")
 def request_password_reset(payload: EmailInput, request: Request, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == payload.email.strip().lower(), User.email_verified_at.is_not(None)))
+    user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
     if user is not None:
         db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
         token = secrets.token_urlsafe(32)
@@ -592,12 +576,12 @@ def request_password_reset(payload: EmailInput, request: Request, db: Session = 
         base_url = os.getenv("APP_BASE_URL", str(request.base_url).rstrip("/"))
         reset_url = f"{base_url}/reset-password?token={token}"
         try:
-            _send_verification_email(user.email, f"Reset your FinSight password: {reset_url}")
+            _send_email(user.email, "Reset your FinSight password", f"Reset your FinSight password: {reset_url}")
         except (OSError, smtplib.SMTPException):
             pass
         if not production and not os.getenv("SMTP_HOST"):
-            return {"detail": "If the account exists and is verified, a reset link is available.", "reset_url": reset_url}
-    return {"detail": "If the account exists and is verified, a reset email will be sent."}
+            return {"detail": "If the account exists, a reset link is available.", "reset_url": reset_url}
+    return {"detail": "If the account exists, a reset email will be sent."}
 
 
 @app.post("/api/auth/password-reset/confirm")
@@ -659,8 +643,6 @@ def login(payload: LoginInput, db: Session = Depends(get_db)):
     password_ok = verify_password(payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH)
     if user is None or not password_ok:
         raise HTTPException(status_code=401, detail="Email or password is incorrect")
-    if user.email_verified_at is None:
-        raise HTTPException(status_code=403, detail="Please verify your email before signing in.", headers={"X-Verify-Email": "required"})
     token = issue_session(db, user)
     db.commit()
     response = JSONResponse(
