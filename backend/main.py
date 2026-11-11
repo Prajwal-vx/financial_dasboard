@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -444,7 +444,6 @@ def faq_page():
 # Organization Schema endpoint
 @app.get("/schema.json", include_in_schema=False)
 def organization_schema():
-    from fastapi.responses import JSONResponse
     schema = {
         "@context": "https://schema.org",
         "@type": "Organization",
@@ -469,7 +468,6 @@ def custom_404():
 # 301 Redirect handler for old routes
 @app.get("/index.html", include_in_schema=False)
 def redirect_index():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/dashboard", status_code=301)
 
 
@@ -513,7 +511,7 @@ def register_get():
 
 
 @app.post("/api/auth/register", response_model=AuthResponse, status_code=201)
-def register(payload: RegisterInput, request: Request, db: Session = Depends(get_db)):
+def register(payload: RegisterInput, db: Session = Depends(get_db)):
     # HIBP k-anonymity range query: only the first 5 SHA-1 hex characters leave the server.
     try:
         if _password_is_compromised(payload.password):

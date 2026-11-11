@@ -57,18 +57,6 @@ def issue_session(db: Session, user: User) -> str:
     return token
 
 
-def issue_email_verification(db: Session, user: User) -> str:
-    from backend.models import EmailVerificationToken
-
-    token = secrets.token_urlsafe(32)
-    db.add(EmailVerificationToken(
-        user_id=user.id,
-        token_hash=hashlib.sha256(token.encode()).hexdigest(),
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
-    ))
-    return token
-
-
 def resolve_current_user(request: Request, db: Session) -> User:
     raw_token = request.cookies.get(SESSION_COOKIE_NAME)
     if raw_token is None or not raw_token.strip():
